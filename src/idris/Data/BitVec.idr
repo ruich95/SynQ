@@ -36,7 +36,7 @@ toFin 0 (S k) {prf=LTESucc x} = FZ
 toFin (S j) (S k) {prf=LTESucc x} = FS $ toFin j k {prf=x}
 
 
-export
+public export
 fromInteger: {n:_} -> Integer -> BitVec n
 fromInteger {n} i = 
   let sht = toFin 63 (minus 64 n) {prf = lemma 64 n}
@@ -49,12 +49,14 @@ lib_bv : String -> String
 lib_bv fn = "C:" ++ fn ++ ",libbv"
 
 natToBits8: Nat -> Bits8
-natToBits8 k with (k < 64)
-  natToBits8 k | False = 64
-  natToBits8 k | True 
-    = case k of
-        0     => 0
-        (S j) => 1 + natToBits8 j
+natToBits8 k = 
+  if (k < 64) then cast k else 64 --?natToBits8_rhs
+-- natToBits8 k with (k < 64)
+--   natToBits8 k | False = 64
+--   natToBits8 k | True 
+--     = case k of
+--         0     => 0
+--         (S j) => 1 + natToBits8 j
 
 %foreign (lib_bv "bv_eq")
 bv_eq: Bits8 -> Bits64 -> Bits64 -> Bits64

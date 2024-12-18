@@ -2,10 +2,6 @@ module Examples.RV32I.Common
 
 import SynQ
 
--- import Sym.Comb
--- import Sym.CombPrimitive
--- import Sym.CombLib
-
 import Data.Bits
 
 public export
@@ -69,15 +65,15 @@ data InstTy: Type where
 public export
 instToOpCode: {comb:_} -> (Primitive comb) 
            => InstTy -> comb () $ BitVec 7
-instToOpCode RR    = const 51  -- 0110011
-instToOpCode RI    = const 19  -- 0010011
-instToOpCode STORE = const 35  -- 0100011
-instToOpCode LOAD  = const 3   -- 0000011
-instToOpCode B     = const 99  -- 1100011
-instToOpCode JAL   = const 111 -- 1101111
-instToOpCode JALR  = const 103 -- 1100111
-instToOpCode LUI   = const 55  -- 0110111
-instToOpCode AUIPC = const 23  -- 0010111
+instToOpCode RR    = const $ BV 51  -- 0110011
+instToOpCode RI    = const $ BV 19  -- 0010011
+instToOpCode STORE = const $ BV 35  -- 0100011
+instToOpCode LOAD  = const $ BV 3   -- 0000011
+instToOpCode B     = const $ BV 99  -- 1100011
+instToOpCode JAL   = const $ BV 111 -- 1101111
+instToOpCode JALR  = const $ BV 103 -- 1100111
+instToOpCode LUI   = const $ BV 55  -- 0110111
+instToOpCode AUIPC = const $ BV 23  -- 0010111
 
 lemma: (n: Nat) -> minus (S n) n = 1
 lemma 0 = Refl
@@ -140,12 +136,12 @@ data BOP: Type where
 public export
 bopToFunct3: {comb:_} -> (Primitive comb) 
   => BOP -> comb () $ BitVec 3
-bopToFunct3 BEQ  = (const 0)
-bopToFunct3 BNE  = (const 1)
-bopToFunct3 BLT  = (const 4)
-bopToFunct3 BGE  = (const 5)
-bopToFunct3 BLTU = (const 6)
-bopToFunct3 BGEU = (const 7)
+bopToFunct3 BEQ  = (const $ BV 0)
+bopToFunct3 BNE  = (const $ BV 1)
+bopToFunct3 BLT  = (const $ BV 4)
+bopToFunct3 BGE  = (const $ BV 5)
+bopToFunct3 BLTU = (const $ BV 6)
+bopToFunct3 BGEU = (const $ BV 7)
 
 public export
 data MemWidth: Type where

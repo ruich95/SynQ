@@ -3,6 +3,7 @@ module Impl.Eval.Comb
 import Sym.Comb.Comb
 import Impl.Eval.Eval
 
+import Data.BitVec
 import Data.Signal
 
 public export
@@ -17,8 +18,8 @@ Comb Combinational where
     in MkComb (f' . x')
     
   prod x y = MkComb 
-    $ bimap (runComb x) (runComb y) 
-    . (\() => ((), ()))
+    $ const ((runComb x) (),  (runComb y) ())
+--     . (\() => ((), ()))
   
   proj1 x = MkComb 
     $ (fst . runComb x)

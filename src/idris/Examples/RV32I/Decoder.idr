@@ -13,25 +13,25 @@ decoderAluOp: {comb:_} -> (Primitive comb)
            -> (funct7: comb () $ BitVec 7)
            -> comb () $ BitVec 10
 decoderAluOp opcode funct3 funct7 = 
-  mux21 (eq funct3 (const 0))
+  mux21 (eq funct3 (const $ BV 0))
         (mux21 (eq opcode $ instToOpCode RI)
                (aluOpEncode ADD)
-               (mux21 (eq funct7 (const 32))
+               (mux21 (eq funct7 (const $ BV 32))
                       (aluOpEncode SUB)   -- sub
                       (aluOpEncode ADD)))  -- add
- (mux21 (eq funct3 (const 1))
+ (mux21 (eq funct3 (const $ BV 1))
         (aluOpEncode SLL)          -- sll
- (mux21 (eq funct3 (const 2))
+ (mux21 (eq funct3 (const $ BV 2))
         (aluOpEncode SLT)          -- slt
- (mux21 (eq funct3 (const 3))
+ (mux21 (eq funct3 (const $ BV 3))
         (aluOpEncode SLTU)         -- sltu
- (mux21 (eq funct3 (const 4))
+ (mux21 (eq funct3 (const $ BV 4))
         (aluOpEncode XOR)          -- xor
- (mux21 (eq funct3 (const 5)) 
-        (mux21 (eq funct7 (const 32))
+ (mux21 (eq funct3 (const $ BV 5)) 
+        (mux21 (eq funct7 (const $ BV 32))
                (aluOpEncode SRA) -- sra
                (aluOpEncode SRL)) -- srl
- (mux21 (eq funct3 (const 6))
+ (mux21 (eq funct3 (const $ BV 6))
         (aluOpEncode OR)        -- or
         (aluOpEncode AND)))))))  -- and
         
@@ -50,7 +50,7 @@ decoderImm' S_IMM rd _ _ _  funct7 =
   signExt 20 (concat funct7 rd)
 decoderImm' B_IMM rd _ _ _  funct7 = 
   let b11    = test 0 rd 
-      b_4_0  = rd `and` (not $ const 1)
+      b_4_0  = rd `and` (not $ const $ BV 1)
       b12    = test 6 funct7
       b_10_5 = slice 0 6 funct7
       imm    = concat (concat b12 b11) 
@@ -97,7 +97,7 @@ decoderImm opcode rd funct3 rs1 rs2 funct7 =
         
  (mux21 (eq opcode $ instToOpCode JAL)
         (decoderImm' J_IMM rd funct3 rs1 rs2 funct7)
-        (const 0)))))
+        (const $ BV 0)))))
         
 public export        
 decoderRd: {comb:_} -> (Primitive comb)
@@ -115,4 +115,4 @@ decoderRd opcode rd =
         (or (eq opcode $ instToOpCode RI) 
             (eq opcode $ instToOpCode RR)))
         rd
-        (const 0)
+        (const $ BV 0)

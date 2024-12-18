@@ -1,5 +1,6 @@
 module Data.SQData
 
+import public Data.Bits
 import public Data.BitVec
 -- import public Data.Name
 -- import public Data.Value

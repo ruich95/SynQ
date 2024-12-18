@@ -3,6 +3,7 @@ module Impl.Compile.Comb
 import Sym.Comb
 import Impl.Compile.Compile
 import Language.Reflection
+import Data.Signal
 
 public export
 Comb Combinational where

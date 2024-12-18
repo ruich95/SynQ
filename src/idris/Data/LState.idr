@@ -46,7 +46,10 @@ pure x = LST (\1 y => y # x)
 public export
 (=<<): (1 g: b -> LState s c) -> (1 f: a -> LState s b) 
     -> a -> LState s c
-(=<<) g f = fromMealy $ (toMealy g) . (toMealy f)
+(=<<) g f x = LST $ \s => 
+  let (s' # y) = runState (f x) s 
+      (s'' # z) = runState (g y) s' 
+  in (s'' # z) -- fromMealy $ (toMealy g) . (toMealy f)
 
 public export
 (>>=): (1 x: LState s a) -> (1 f: a -> LState s b) 

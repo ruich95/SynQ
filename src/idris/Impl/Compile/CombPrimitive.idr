@@ -1,9 +1,10 @@
 module Impl.Compile.CombPrimitive
 
-import Sym.CombPrimitive
+import Sym.Comb.CombPrimitive
 import Impl.Compile.Compile
 import Language.Reflection
 import Data.BitVec
+import Data.Bits
 
 %language ElabReflection
 
@@ -36,7 +37,7 @@ Primitive Combinational where
       b' <- b 
       x' <- x 
       y' <- y 
-      pure $ \u => if (b' u) == 1 then (x' u) else (y' u)
+      pure $ \u => if (b' ()) == (BV {n=1} 1) then (x' ()) else (y' ())
   
   not (MkComb x) = 
     MkComb [| const [| bvNot (x <*> pure ()) |] |]
@@ -67,9 +68,9 @@ Primitive Combinational where
     in MkComb [| const [| bvLt x' y' |] |]
   
   shiftLL sht (MkComb x) = 
-    let x' = x <*> pure ()
-        f = bvSll sht
-    in MkComb [| const [| f x' |] |]
+    MkComb $ do
+      x' <- x
+      pure $ const $ bvSll sht (x' ())
   
   shiftRL sht (MkComb x) = 
     let x' = x <*> pure ()

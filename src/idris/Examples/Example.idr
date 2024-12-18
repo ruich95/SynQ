@@ -9,7 +9,7 @@ import Data.Nat
 
 
 %hide Prelude.(=<<)
-%hide Prelude.pure
+-- %hide Prelude.pure
 
 
 %hint
@@ -144,3 +144,23 @@ dly2: {comb: _} -> {seq: _} -> (Seq comb seq)
   => (1 reg: Reg comb seq) 
   -> seq (!* (BitVec 8)) (BitVec 8) (BitVec 8)
 dly2 reg = abst $ \x => dlyc reg x
+
+sysFn: {comb: _} -> (Comb comb, Primitive comb)
+  => comb (BitVec 8, BitVec 8) (BitVec 8, BitVec 8)
+sysFn = lam $ \xy => prod (proj2 xy) (app adder xy)
+
+double: {comb: _} -> (Comb comb, Primitive comb)
+  => comb (BitVec 8) (BitVec 8)
+double = lam $ \x => (app adder $ prod x x)
+
+sys: {comb: _} -> {seq: _} -> (Seq comb seq, Primitive comb)
+  => (1 reg: Reg comb seq) 
+  -> seq (!* (BitVec 8)) (BitVec 8) (BitVec 8)
+sys reg = (pure double) =<< (scan reg sysFn)
+
+readIn: IO (BitVec 8)
+readIn = do str <- getLine
+            Prelude.pure $ BitVec.fromInteger $ cast str
+
+main: IO ()
+main = reactMealy readIn (runSeq $ sys reg) (MkBang 0)

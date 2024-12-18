@@ -8,21 +8,7 @@ import Examples.RV32I.ALU
 import Examples.RV32I.RegFile
 import Examples.RV32I.Utils
 
--- import Sym.Comb
--- import Sym.CombPrimitive
--- import Sym.CombLib
--- import Sym.Seq
--- import Sym.SeqPrimitive
--- import Sym.SeqLib
-
--- import Data.LState
-
--- import Impl.Eval
--- import Impl.HDL
-
--- import Data.Bits
--- import Data.Linear
--- import Data.State
+import Data.Bits
 
 %hide Prelude.concat
 %hide Prelude.(=<<)
@@ -31,6 +17,7 @@ import Examples.RV32I.Utils
 
 %language ElabReflection
 
+public export
 packInst: {comb:_} -> (Comb comb, Primitive comb)
   => (opcode:  comb () $ BitVec 7)  --************
   -> (rd:      comb () $ BitVec 5)  --
@@ -44,7 +31,7 @@ packInst opcode rd funct3 rs1 rs2 funct7 =
                  (concat rs1 funct3))
          (concat rd opcode)
 
-
+public export
 updatePcBr: {comb:_} -> (Comb comb, Primitive comb)
   => (funct3:  comb () $ BitVec 3)
   -> (imm:     comb () $ BitVec 32)
@@ -63,8 +50,9 @@ updatePcBr funct3 imm pc =
                       (and (eq funct3 $ bopToFunct3 BGEU) (not ltu12)))
     in mux21 (or condEq (or condLt condLtu))
              (adder pc imm)
-             (adder pc (const 4))
+             (adder pc (const $ BV 4))
 
+public export
 updatePC: {comb:_} -> (Comb comb, Primitive comb)
   => (en: comb () $ BitVec 1)
   -> (opcode:  comb () $ BitVec 7)
@@ -77,7 +65,7 @@ updatePC: {comb:_} -> (Comb comb, Primitive comb)
   -> (pcSaved: comb () $ BitVec 32)
   -> comb () $ BitVec 32
 updatePC en opcode funct3 r1Data r2Data imm pc inStg2 pcSaved = 
-  mux21 (not en) (const 0)
+  mux21 (not en) (const $ BV 0)
  (mux21 inStg2 pcSaved -- restore previous pc
         (mux21 (or (eq opcode $ instToOpCode STORE) 
                    (eq opcode $ instToOpCode LOAD))
@@ -93,7 +81,7 @@ updatePC en opcode funct3 r1Data r2Data imm pc inStg2 pcSaved =
                                 (ltu r1Data r2Data))))
                (adder pc $ const 4)))))) -- default
 
-
+public export
 ldMemCast: {comb:_} -> (Comb comb, Primitive comb)
   => (funct3: comb () $ BitVec 3)
   -> (memDat: comb () $ BitVec 32)
@@ -109,6 +97,7 @@ ldMemCast funct3 memDat =
         (zeroExt 24 $ slice 0 8 memDat)
         memDat)))
 
+public export
 getRdData: {comb:_} -> (Comb comb, Primitive comb)
   => (opcode:  comb () $ BitVec 7)
   -> (fn3Saved:  comb () $ BitVec 3)
@@ -127,12 +116,13 @@ getRdData opcode fn3Saved inStg2 store aluRes pc memDat imm =
                (adder pc imm) 
         (mux21 (or (eq opcode $ instToOpCode JAL)
                    (eq opcode $ instToOpCode JALR))
-               (adder pc $ const 4)
+               (adder pc $ const $ BV 4)
         (mux21 (or (eq opcode $ instToOpCode RR)
                    (eq opcode $ instToOpCode RI))
                aluRes
-               (const 0)))))
+               (const $ BV 0)))))
 
+public export
 getRd: {comb:_} -> (Comb comb, Primitive comb)
   => (en: comb () $ BitVec 1)
   -> (opcode:   comb () $ BitVec 7)
@@ -142,22 +132,24 @@ getRd: {comb:_} -> (Comb comb, Primitive comb)
   -> (regSaved: comb () $ BitVec 5)
   -> comb () $ BitVec 5
 getRd en opcode inStg2 store rd regSaved = 
-  mux21 (not en) (const 0)
+  mux21 (not en) (const $ BV 0)
  (mux21 (inStg2) 
-        (mux21 store (const 0) regSaved) 
+        (mux21 store (const $ BV 0) regSaved) 
         (decoderRd opcode rd))
 
+public export
 getWen: {comb:_} -> (Comb comb, Primitive comb)
   => (en: comb () $ BitVec 1)
   -> (inStg2: comb () $ BitVec 1)
   -> (store : comb () $ BitVec 1)
   -> comb () $ BitVec 1
 getWen en inStg2 store = 
-  mux21 (not en) (const 0)
+  mux21 (not en) (const $ BV 0)
  (mux21 (inStg2) 
-        (mux21 store (const 1) (const 0)) 
-        (const 0))
+        (mux21 store (const $ BV 1) (const $ BV 0)) 
+        (const $ BV 0))
 
+public export
 stMemCast: {comb:_} -> (Comb comb, Primitive comb)
   => (funct3: comb () $ BitVec 3)
   -> (dataSaved: comb () $ BitVec 32)
@@ -170,6 +162,7 @@ stMemCast funct3 dataSaved memDat =
         (concat (slice 8 32 memDat) (slice 0 8 dataSaved))
         dataSaved)
 
+public export
 getWdata: {comb:_} -> (Comb comb, Primitive comb)
   => (fn3Saved: comb () $ BitVec 3)
   -> (inStg2: comb () $ BitVec 1)
@@ -179,23 +172,25 @@ getWdata: {comb:_} -> (Comb comb, Primitive comb)
   -> comb () $ BitVec 32
 getWdata fn3Saved inStg2 store dataSaved memDat =
   mux21 (inStg2)
-        (mux21 store (stMemCast fn3Saved dataSaved memDat) (const 0)) 
-        (const 0)
+        (mux21 store (stMemCast fn3Saved dataSaved memDat) (const $ BV 0)) 
+        (const $ BV 0)
 
+public export
 getWaddr: {comb:_} -> (Comb comb, Primitive comb)
   => (pc: comb () $ BitVec 32)
   -> comb () $ BitVec 32
 getWaddr = id
 
-
+public export
 updatePcSaved: {comb:_} -> (Comb comb, Primitive comb)
   => (en: comb () $ BitVec 1)
   -> (pc: comb () $ BitVec 32)
   -> comb () $ BitVec 32
 updatePcSaved en pc = mux21 (not en) 
-                            (const 0) 
-                            (adder pc (const 4))
+                            (const $ BV 0) 
+                            (adder pc (const $ BV 4))
 
+public export
 updateRegSaved: {comb:_} -> (Comb comb, Primitive comb)
   => (en: comb () $ BitVec 1)
   -> (opcode: comb () $ BitVec 7)
@@ -203,44 +198,49 @@ updateRegSaved: {comb:_} -> (Comb comb, Primitive comb)
   -> (rd:     comb () $ BitVec 5)
   -> comb () $ BitVec 5
 updateRegSaved en opcode rs2 rd = 
-  mux21 (not en) (const 0)
+  mux21 (not en) (const $ BV 0)
  (mux21 (eq opcode $ instToOpCode STORE) rs2 rd)
-  
+
+public export
 updateDataSaved: {comb:_} -> (Comb comb, Primitive comb)
   => (en: comb () $ BitVec 1)
   -> (r2Dat:  comb () $ BitVec 32)
   -> comb () $ BitVec 32
-updateDataSaved en r2Dat = mux21 (not en) (const 0) r2Dat
+updateDataSaved en r2Dat = mux21 (not en) (const $ BV 0) r2Dat
 
+public export
 updateFn3Saved: {comb:_} -> (Comb comb, Primitive comb)
   => (en: comb () $ BitVec 1)
   -> (funct3:  comb () $ BitVec 3)
   -> comb () $ BitVec 3
-updateFn3Saved en funct3 = mux21 (not en) (const 0) funct3
+updateFn3Saved en funct3 = mux21 (not en) (const $ BV 0) funct3
 
+public export
 updateInStg2: {comb:_} -> (Comb comb, Primitive comb)
   => (en: comb () $ BitVec 1)
   -> (opcode: comb () $ BitVec 7)
   -> (inStg2: comb () $ BitVec 1)
   -> comb () $ BitVec 1
 updateInStg2 en opcode inStg2 = 
-  mux21 (not en) (const 0)
- (mux21 inStg2 (const 0)
+  mux21 (not en) (const $ BV 0)
+ (mux21 inStg2 (const $ BV 0)
         (mux21 (or (eq opcode $ instToOpCode STORE)
                    (eq opcode $ instToOpCode LOAD))
-               (const 1) (const 0)))
-               
+               (const 1) (const $ BV 0)))
+
+public export               
 updateStore: {comb:_} -> (Comb comb, Primitive comb)
   => (en: comb () $ BitVec 1)
   -> (opcode: comb () $ BitVec 7)
   -> (inStg2: comb () $ BitVec 1)
   -> comb () $ BitVec 1
 updateStore en opcode inStg2 = 
-  mux21 (not en) (const 0)
- (mux21 inStg2 (const 0)
+  mux21 (not en) (const $ BV 0)
+ (mux21 inStg2 (const $ BV 0)
         (mux21 (eq opcode $ instToOpCode STORE)
-               (const 1) (const 0)))
+               (const $ BV 1) (const $ BV 0)))
 
+public export
 rv32iComb': {comb:_} -> (Comb comb, Primitive comb)
   => (en: comb () $ BitVec 1)
   -> (opcode:  comb () $ BitVec 7)   --**************
@@ -297,7 +297,7 @@ rv32iComb' en opcode rd funct3 rs1 rs2 funct7 pc
         --******************
     in prod (prod outSig regFSig) (prod nextState nextContext)
     
-  
+public export 
 rv32iCombFlat: {comb:_} -> (Comb comb, Primitive comb)
   => (en: comb () $ BitVec 1)
   -> (opcode:  comb () $ BitVec 7)   --**************
@@ -329,6 +329,7 @@ rv32iCombFlat en opcode rd funct3 rs1 rs2 funct7 pc
         imm = decoderImm opcode rd funct3 rs1 rs2 funct7
     in app comb imm
 
+public export
 rv32iComb: {comb:_} -> (Comb comb, Primitive comb)
   => (en: comb () $ BitVec 1)
   -> (opcode:  comb () $ BitVec 7)   --**************
@@ -362,21 +363,26 @@ rv32iComb en opcode rd funct3 rs1 rs2 funct7 pc
                       (BitVec 5, BitVec 32, BitVec 32, BitVec 3))
       prfHelper = (P (P BV BV) (P (P BV BV) (P BV (P BV $ P BV BV))))
 
+
+public export
 StateType: Type 
 StateType = LPair (LPair (!* BitVec 1) (!* BitVec 1)) 
                   (LPair (!* BitVec 5) $ LPair (!* BitVec 32) 
                                                (LPair (!* BitVec 32) (!* BitVec 3)))
-
+public export
 StateIOType: Type 
 StateIOType =  ((BitVec 1, BitVec 1),
                 (BitVec 5, BitVec 32, BitVec 32, BitVec 3))
-                
+
+public export   
 initState: StateType
 initState = (MkBang 0 # MkBang 0) # (MkBang 0 # (MkBang 0 # (MkBang 0 # MkBang 0)))
-                
+
+public export   
 sameShape1: SameShape StateIOType StateType
 sameShape1 = P (P BV BV) (P BV (P BV $ P BV BV))
 
+public export
 rv32iInner: {comb:_} -> {seq:_} 
   -> (Comb comb, Primitive comb, Seq comb seq)
   => (1 reg: Reg comb seq)
@@ -396,6 +402,7 @@ rv32iInner reg en opcode rd funct3 rs1 rs2 funct7 pc
   = let combPart = rv32iComb {comb=comb} en opcode rd funct3 rs1 rs2 funct7 pc
     in scan reg {similar=sameShape1} combPart
 
+public export
 rv32i': {comb:_} -> {seq:_} 
   -> (Comb comb, Primitive comb, Seq comb seq)
   => (1 reg: Reg comb seq)
@@ -420,16 +427,7 @@ rv32i' reg (MkRF read write) en opcode rd funct3 rs1 rs2 funct7 pc
                                          (proj2 $ proj2 ins))) 
    =<< (inner  <<< (read rs1 rs2))
 
--- -- innerT: {comb:_} -> {seq:_} 
--- --   -> (Comb comb, Primitive comb, Seq comb seq)
--- --   => (1 reg: Reg comb seq)
--- --   -> (1 regFile: RegFile comb seq)
--- --   -> seq (LPair RegF StateType)  () 
--- --                    (((BitVec 1, BitVec 32, BitVec 32),  -- wen waddr wdata
--- --                      (BitVec 32)))             -- rd rData
--- -- innerT reg regFile = rv32i' reg regFile(const 0) (const 1) (const 2) (const 3) (const 4) (const 5) (const 6)
-
-
+public export
 unpackInst: {comb:_} -> (Comb comb, Primitive comb)
   => (inst: comb () $ BitVec 32)
   -> (comb () (BitVec 7), (comb () (BitVec 3), comb () (BitVec 7)), 
@@ -443,6 +441,7 @@ unpackInst inst = -- here we use believe_me to accelecrate type checking by skip
       funct7 = slice 25 32 {prf_upper= believe_me ()} {prf_lower= believe_me ()} inst
   in (opcode, (funct3, funct7), (rd, rs1, rs2))
 
+public export
 rv32i: {comb:_} -> {seq:_} 
   -> (Comb comb, Primitive comb, Seq comb seq)
   => (1 reg: Reg comb seq)
@@ -457,9 +456,9 @@ rv32i reg regFile =
         en = proj1 ins
     in rv32i' reg regFile en opcode rd funct3 rs1 rs2 funct7 pc
 
-
+public export
 rv32iFn: (BitVec 1, BitVec 32, BitVec 32) 
-  -> LState (LPair RegF StateType) 
+  -> LState (LPair RegF StateType)
             ((BitVec 1, BitVec 32, BitVec 32), (BitVec 32))
 rv32iFn = runSeq (rv32i reg regFile)
 

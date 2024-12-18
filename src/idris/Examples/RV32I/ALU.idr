@@ -4,6 +4,7 @@ import SynQ
 
 import Examples.RV32I.Common
 
+-- public export
 barrelShtGen: {comb:_} -> (Comb comb, Primitive comb)
    => (n: Nat) 
    -> (shtFn: Nat -> comb () (BitVec 32) -> comb () (BitVec 32))
@@ -16,6 +17,7 @@ barrelShtGen (S k) shtFn sht dat =
         (shtFn (S k) dat)
         (barrelShtGen k shtFn sht dat) 
 
+public export
 alu': {comb:_} -> (Comb comb, Primitive comb)
   => comb (BitVec 10, BitVec 32, BitVec 32) $ BitVec 32
 alu' = 
@@ -27,15 +29,15 @@ alu' =
              (adder op1 op2)
       (mux21 (test 1 aluop) 
              (adder op1 
-                   (adder (not op2) $ const 1))
+                   (adder (not op2) $ const $ BV 1))
       (mux21 (test 2 aluop) 
              (mux21 (lt op1 op2) 
-                    (const 1) 
-                    (const 0)) 
+                    (const $ BV 1) 
+                    (const $ BV 0)) 
       (mux21 (test 3 aluop)
              (mux21 (ltu op1 op2) 
-                    (const 1) 
-                    (const 0))
+                    (const $ BV 1) 
+                    (const $ BV 0))
       (mux21 (test 4 aluop) 
              (xor op1 op2)
       (mux21 (test 5 aluop) 

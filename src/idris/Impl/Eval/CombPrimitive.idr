@@ -5,37 +5,38 @@ import Impl.Eval.Eval
 
 import Data.BitVec
 import Data.Nat
+import Data.Bits
 
 public export
 Primitive Combinational where
   const x = MkComb (\() => x)
   
-  add (MkComb x) (MkComb y) = MkComb $ \u => bvAdd (x u) (y u)
+  add (MkComb x) (MkComb y) = MkComb $ \() => bvAdd (x ()) (y ())
   
-  concat (MkComb x) (MkComb y) = MkComb $ \u => bvConcat (x u) (y u)
+  concat (MkComb x) (MkComb y) = MkComb $ \() => bvConcat (x ()) (y ())
   
-  and (MkComb x) (MkComb y) = MkComb $ \u => bvAnd (x u) (y u)
+  and (MkComb x) (MkComb y) = MkComb $ \() => bvAnd (x ()) (y ())
   
-  or (MkComb x) (MkComb y) = MkComb $ \u => bvOr (x u) (y u)
+  or (MkComb x) (MkComb y) = MkComb $ \() => bvOr (x ()) (y ())
   
-  not (MkComb x) = MkComb $ \u => bvNot (x u)
+  not (MkComb x) = MkComb $ \() => bvNot (x ())
   
-  xor (MkComb x) (MkComb y) = MkComb $ \u => bvXor (x u) (y u)
+  xor (MkComb x) (MkComb y) = MkComb $ \() => bvXor (x ()) (y ())
   
-  shiftLL sht (MkComb x) = MkComb $ \u => bvSll sht (x u)
+  shiftLL sht (MkComb x) = MkComb $ \() => bvSll sht (x ())
   
-  shiftRL sht (MkComb x) = MkComb $ \u => bvSrl sht (x u)
+  shiftRL sht (MkComb x) = MkComb $ \() => bvSrl sht (x ())
   
-  shiftRA sht (MkComb x) = MkComb $ \u => bvSra sht (x u)
+  shiftRA sht (MkComb x) = MkComb $ \() => bvSra sht (x ())
   
-  slice lower upper (MkComb x) = MkComb $ \u => bvSlice lower upper (x u)
+  slice lower upper (MkComb x) = MkComb $ \() => bvSlice lower upper (x ())
   
-  mux21 (MkComb b) x y = if (b ()) == 1 then x else y
+  mux21 (MkComb b) x y = if (b ()) == (BV 1) then x else y
                          
-  lt (MkComb x) (MkComb y) = MkComb $ \u => bvLt (x u) (y u)
+  lt (MkComb x) (MkComb y) = MkComb $ \() => bvLt (x ()) (y ())
     
-  ltu (MkComb x) (MkComb y) = MkComb $ \u => bvLtu (x u) (y u)
+  ltu (MkComb x) (MkComb y) = MkComb $ \() => bvLtu (x ()) (y ())
   
-  eq (MkComb x) (MkComb y) = MkComb  $ \u => if (x u) == (y u) then 1 else 0
+  eq (MkComb x) (MkComb y) = MkComb  $ \() => if (x ()) == (y ()) then (BV 1) else (BV 0)
   
   

@@ -32,7 +32,7 @@ sameShapeTrans (P p11 p12) (P p21 p22) =
   in rewrite p1' in rewrite p2' in Refl
 
 
-export
+public export
 stToSig: (1 st: s) -> {auto sIsState: St s}
       -> {auto aIsSig: Sig a}
       -> {auto similar: SameShape a s}
@@ -55,15 +55,15 @@ sigToSt x {similar = BV} = MkBang x
 sigToSt (x, y) {sIsState = (LP st1 st2)} {aIsSig = (P p1 p2)} {similar = (P prfa prfb)} 
   = sigToSt x # sigToSt y
   
-export
-stConsume: (1 _: s) -> {auto sIsSig: St s} 
+public export
+stConsume: (1 _: s) -> {auto sIsState: St s} 
   -> ()
-stConsume x {sIsSig = LU} = x
-stConsume (x # y) {sIsSig = (LP st1 st2)} = 
+stConsume x {sIsState = LU} = x
+stConsume (x # y) {sIsState = (LP st1 st2)} = 
   let () = stConsume x
       () = stConsume y
   in ()
-stConsume (MkBang _) {sIsSig = LV} = ()
+stConsume (MkBang _) {sIsState = LV} = ()
 
 --   U: SameShape (Sig ()) (St ())
 --   P:  (prfa: SameShape (Sig a) (St a))

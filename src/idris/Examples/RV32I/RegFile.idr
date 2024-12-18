@@ -5,7 +5,7 @@ import SynQ
 -- import Data.Linear
 
 %hide Prelude.pure
--- %hide Data.Linear.seq
+%hide Data.Linear.seq
 
 public export
 repeat: (n: Nat) -> Type -> Type
@@ -104,10 +104,10 @@ regSel': {comb:_} -> (Primitive comb, Comb comb)
       -> (idx: comb () (BitVec 5)) 
       -> (regs: comb () (repeat n $ BitVec 32))
       -> comb () (BitVec 32)
-regSel' {n = (S 0)} {prf = (LTESucc prf')} idx regs = const 0
+regSel' {n = (S 0)} {prf = (LTESucc prf')} idx regs = const $ BV 0
 regSel' {n = (S (S k))} {prf = (LTESucc prf')} idx regs = 
   let cur: comb () (BitVec 5) 
-         = const $ fromInteger $ cast (S k)
+         = const $ BV $ cast (S k) -- fromInteger $ cast (S k)
       (cur_val, rest) = unpack {n= S k} regs
   in mux21 (eq idx cur)
            cur_val
@@ -159,6 +159,12 @@ regFile: {comb:_} -> {seq:_}
           Seq comb seq)
       => RegFile comb seq
 regFile = MkRF rdRegF wrRegF
+
+public export
+{comb:_} -> {seq:_} -> (Primitive comb, Seq comb seq, Reg comb seq) 
+  => RegFile comb seq where
+  read = rdRegF
+  write = wrRegF
 
 initRegF': {n:_} -> repeatL n (BitVec 32)
 initRegF' {n = 0} = ()
