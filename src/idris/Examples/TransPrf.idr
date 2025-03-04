@@ -118,7 +118,7 @@ value cl x = C $ Val $ cl.value x
 
 -- implement Comb with CombL
 impl: {repr: _} -> (cl: CombL repr) -> (Comb $ E repr)
-impl cl = 
+impl cl =
   CombComponents 
     (lam cl) (app cl) (prod cl) (fst cl)
     (snd cl) (unit cl) (add cl)  (value cl)
@@ -136,7 +136,8 @@ norm' cl (C x) = extract x
 
 norm: {a: _} -> {b: _}
  -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
- -> ({repr': _} -> Comb repr' -> repr' a b) -> ({repr:_} ->  CombL repr -> repr a b)
+ -> ({repr': _} -> Comb repr' -> repr' a b) 
+ -> ({repr:_} ->  CombL repr -> repr a b)
 norm f cl = norm' cl $ f (impl cl)
 
 record Eval a b where
@@ -144,18 +145,39 @@ record Eval a b where
   eval: a -> b
 
 eValue: {n:_} -> BitVec n -> Eval () (BitVec n)
-eValue x = MkEval (\y => x)
+-- eValue x = MkEval (\y => x)
+
+eAdd: {n:_} -> Eval () (BitVec n) -> Eval () (BitVec n) -> Eval () $ BitVec (S n)
+
+eUnit : Eval () ()
+-- eUnit = MkEval (\x => x)
+
+eSnd : {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} -> Eval () (a, b) -> Eval () b
+
+eFst : {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} -> Eval () (a, b) -> Eval () a
+
+eProd : {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} -> Eval () a -> Eval () b -> Eval () (a, b)
+
+eLam : {auto aIsSig: Sig a} -> {auto notUnit: NotUnit a} -> {auto bIsSig: Sig b} -> (Eval () a -> Eval () b) -> Eval a b
+
+eApp : {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} -> Eval a b -> Eval () a -> Eval () b
+eApp (MkEval f) (MkEval x) = MkEval (\() => f (x ()))
+
 
 evalImpl: Comb Eval
 evalImpl = 
-  CombComponents ?evalLam ?evalApp ?evalProd ?evalFst ?evalSnd ?evalUnit ?evalAdd eValue
+  CombComponents eLam eApp eProd eFst eSnd eUnit eAdd eValue
 
 evalImpl': CombL Eval
 evalImpl' = 
-  CombLComponents ?eval'Lam ?eval'Prod ?eval'Fst ?eval'Snd ?eval'Unit ?eval'Add eValue 
+  CombLComponents eLam eProd eFst eSnd eUnit eAdd eValue 
 
 prf: {a: _} -> {b: _}
  -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
  -> (t: {repr:_} -> (Comb repr) -> repr a b)
- -> (t Main.evalImpl) = ((norm t) Main.evalImpl')
-
+ -> (eval $ t Main.evalImpl) = (eval $ norm t Main.evalImpl')
+prf t with (t $ impl Main.evalImpl')
+  prf t | (F {notUnit} f) with (t Main.evalImpl)
+    prf t | (F {notUnit = notUnit} f) | (MkEval g) = ?prf_rhs_1_rhs_0
+  prf t | (C x) with (x)
+    prf t | (C x) | (Val y) = ?prf_rhs_3_rhs_0
