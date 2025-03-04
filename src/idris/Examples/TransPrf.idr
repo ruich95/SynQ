@@ -45,8 +45,12 @@ record CombL (repr: Type -> Type -> Type) where
   add: {n: _} -> repr () (BitVec n) -> repr () (BitVec n) -> repr () (BitVec $ S n)
   value: {n: _} -> BitVec n -> repr () (BitVec n) 
 
-data V: (Type -> Type -> Type) -> Type -> Type where
-  Val: repr () a -> V repr a
+record V (repr: Type -> Type -> Type) (a: Type) where
+  constructor Val
+  val: repr () a
+
+-- data V: (Type -> Type -> Type) -> Type -> Type where
+--   Val: repr () a -> V repr a
 
 data E: (Type -> Type -> Type) -> Type -> Type -> Type where
   F: {notUnit: NotUnit a} -> (V repr a -> V repr b) -> E repr a b
@@ -123,22 +127,23 @@ impl cl =
     (lam cl) (app cl) (prod cl) (fst cl)
     (snd cl) (unit cl) (add cl)  (value cl)
 
-extract: {repr: _} -> {a:_}
-  -> V repr a -> repr () a
-extract (Val x) = x
-
-norm': {repr: _} -> {a: _} -> {b: _}
+abst: {repr: _} -> {a: _} -> {b: _}
    -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} 
    -> (cl: CombL repr) -> (t: E repr a b) -> repr a b
-norm' cl (F {notUnit} f) 
-  = cl.lam $ \x => extract $ f (Val x)
-norm' cl (C x) = extract x
+abst cl (F {notUnit} f) 
+  = cl.lam $ \x => val $ f (Val x)
+abst cl (C x) = val x
+
+addPrf: {repr: _} -> {n:_} -> (cl: CombL repr) 
+  -> (x: repr () $ BitVec n) -> (y: repr () $ BitVec n)
+  -> (cl.add x y) = abst cl ((impl cl).add (C $ Val x) (C $ Val y))
+addPrf cl x y = ?addPrf_rhs
 
 norm: {a: _} -> {b: _}
  -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
- -> ({repr': _} -> Comb repr' -> repr' a b) 
+ -> ({repr':_} -> Comb repr' -> repr' a b) 
  -> ({repr:_} ->  CombL repr -> repr a b)
-norm f cl = norm' cl $ f (impl cl)
+norm f cl = abst cl $ f (impl cl)
 
 record Eval a b where
   constructor MkEval
@@ -175,9 +180,6 @@ evalImpl' =
 prf: {a: _} -> {b: _}
  -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
  -> (t: {repr:_} -> (Comb repr) -> repr a b)
- -> (eval $ t Main.evalImpl) = (eval $ norm t Main.evalImpl')
-prf t with (t $ impl Main.evalImpl')
-  prf t | (F {notUnit} f) with (t Main.evalImpl)
-    prf t | (F {notUnit = notUnit} f) | (MkEval g) = ?prf_rhs_1_rhs_0
-  prf t | (C x) with (x)
-    prf t | (C x) | (Val y) = ?prf_rhs_3_rhs_0
+ -> (x: a)
+ -> (eval $ t Main.evalImpl) x = (eval $ norm t Main.evalImpl') x
+prf t x = ?prf_rhs
