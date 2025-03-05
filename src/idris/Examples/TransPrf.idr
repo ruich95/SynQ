@@ -55,95 +55,69 @@ record V (repr: Type -> Type -> Type) (a: Type) where
 data E: (Type -> Type -> Type) -> Type -> Type -> Type where
   F: {notUnit: NotUnit a} -> (V repr a -> V repr b) -> E repr a b
   C: V repr a -> E repr () a
+  
+lift1: {repr: _} -> {a: _} -> {b: _}
+   -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
+   -> (fn: repr () a -> repr () b)
+   -> (E repr () a -> E repr () b)
+lift1 fn (F {notUnit = (NUnit prf)} f) = case prf Refl of _ impossible
+lift1 fn (C x) = C $ (Val . fn . val) x
+
+lift2: {repr: _} -> {a: _} -> {b: _}
+   -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} 
+   -> {auto cIsSig: Sig c}
+   -> (fn: repr () a -> repr () b -> repr () c)
+   -> (E repr () a -> E repr () b -> E repr () c)
+lift2 fn (F {notUnit = (NUnit prf)} f) y 
+  = case prf Refl of _ impossible
+lift2 fn (C x) (F {notUnit = (NUnit prf)} f) 
+  = case prf Refl of _ impossible
+lift2 fn (C x) (C y) = C $ Val $ fn (val x) (val y)
+
 
 lam: {repr: _} -> {a:_} -> {b:_} 
   -> {auto aIsSig: Sig a} -> {auto notUnit: NotUnit a} 
   -> {auto bIsSig: Sig b} 
-  -> (cl: CombL repr) 
   -> (E repr () a -> E repr () b) -> E repr a b
-lam cl f = F {notUnit = notUnit} $ 
+lam f = F {notUnit = notUnit} $ 
   \x => let y = f (C x) 
         in case y of
                 (F {notUnit = (NUnit prf)} g) 
                     => case prf Refl of _ impossible
                 (C z) => z
 
-app: {repr: _} -> (cl: CombL repr) 
+app: {repr: _}
   -> E repr a b -> E repr () a -> E repr () b
-app cl (F f) (F {notUnit = (NUnit prf)} g) 
+app (F f) (F {notUnit = (NUnit prf)} g) 
   = case prf Refl of _ impossible
-app cl (F f) (C x) = C (f x)
-app cl (C x) y = C x
-
-prod: {repr: _} -> {a: _} -> {b: _}
-   -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
-   -> (cl: CombL repr) 
-   -> E repr () a -> E repr () b -> E repr () (a, b)
-prod cl (F {notUnit = (NUnit prf)} f) y 
-  = case prf Refl of _ impossible
-prod cl (C x) (F {notUnit = (NUnit prf)} f) 
-  = case prf Refl of _ impossible
-prod cl (C $ Val x) (C $ Val y) = C $ Val $ cl.prod x y
-
-fst: {repr: _} -> {a: _} -> {b: _}
-  -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
-  -> (cl: CombL repr) 
-  -> E repr () (a, b) -> E repr () a
-fst cl (F {notUnit = (NUnit prf)} f) 
-  = case prf Refl of _ impossible
-fst cl (C $ Val x) = C $ Val $ cl.fst x
-
-snd: {repr: _} -> {a: _} -> {b: _}
-  -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
-  -> (cl: CombL repr) 
-  -> E repr () (a, b) -> E repr () b
-snd cl (F {notUnit = (NUnit prf)} f) 
-  = case prf Refl of _ impossible
-snd cl (C $ Val x) = C $ Val $ cl.snd x
-
-unit: {repr: _} -> (cl: CombL repr) 
-   -> E repr () ()
-unit cl = C $ Val $ cl.unit
-
-add: {repr: _} -> {n:_}
-  -> (cl: CombL repr) 
-  -> E repr () (BitVec n) -> E repr () (BitVec n) 
-  -> E repr () (BitVec $ S n)
-add cl (F {notUnit = (NUnit prf)} f) y 
-  = case prf Refl of _ impossible
-add cl (C x) (F {notUnit = (NUnit prf)} f) 
-  = case prf Refl of _ impossible
-add cl (C $ Val x) (C $ Val y) = C $ Val $ cl.add x y
-
-value: {repr:_} -> {n: _}
-    -> (cl: CombL repr)
-    -> BitVec n -> E repr () (BitVec n)
-value cl x = C $ Val $ cl.value x
+app (F f) (C x) = C (f x)
+app (C x) y = C x
 
 -- implement Comb with CombL
 impl: {repr: _} -> (cl: CombL repr) -> (Comb $ E repr)
 impl cl =
   CombComponents 
-    (lam cl) (app cl) (prod cl) (fst cl)
-    (snd cl) (unit cl) (add cl)  (value cl)
+    lam app (lift2 cl.prod) (lift1 cl.fst)
+    (lift1 cl.snd) (C $ Val cl.unit) (lift2 cl.add)  (C . Val . cl.value)
 
 abst: {repr: _} -> {a: _} -> {b: _}
    -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} 
-   -> (cl: CombL repr) -> (t: E repr a b) -> repr a b
-abst cl (F {notUnit} f) 
-  = cl.lam $ \x => val $ f (Val x)
-abst cl (C x) = val x
+   -> (lam: {auto notUnit: NotUnit a} 
+   -> (repr () a -> repr () b) -> repr a b) -> (t: E repr a b) -> repr a b
+abst lam (F {notUnit} f) 
+  = lam $ val . f . Val
+abst lam (C x) = val x
 
-addPrf: {repr: _} -> {n:_} -> (cl: CombL repr) 
+addPrf: {repr: _} -> {n:_} -> (cl: CombL repr) -> (c: Comb repr)
   -> (x: repr () $ BitVec n) -> (y: repr () $ BitVec n)
-  -> (cl.add x y) = abst cl ((impl cl).add (C $ Val x) (C $ Val y))
-addPrf cl x y = ?addPrf_rhs
+  -> ((lift2 c.add) (C $ Val x) (C $ Val y)) = ((impl cl).add (C $ Val x) (C $ Val y))
+addPrf cl c x y = ?rhs
 
 norm: {a: _} -> {b: _}
  -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
  -> ({repr':_} -> Comb repr' -> repr' a b) 
  -> ({repr:_} ->  CombL repr -> repr a b)
-norm f cl = abst cl $ f (impl cl)
+norm f cl = abst cl.lam $ f (impl cl)
 
 record Eval a b where
   constructor MkEval
@@ -157,16 +131,22 @@ eAdd: {n:_} -> Eval () (BitVec n) -> Eval () (BitVec n) -> Eval () $ BitVec (S n
 eUnit : Eval () ()
 -- eUnit = MkEval (\x => x)
 
-eSnd : {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} -> Eval () (a, b) -> Eval () b
+eSnd : {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} 
+  -> Eval () (a, b) -> Eval () b
 
-eFst : {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} -> Eval () (a, b) -> Eval () a
+eFst : {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} 
+  -> Eval () (a, b) -> Eval () a
 
-eProd : {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} -> Eval () a -> Eval () b -> Eval () (a, b)
+eProd : {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} 
+  -> Eval () a -> Eval () b -> Eval () (a, b)
+eProd x y = MkEval $ Prelude.const ((eval x $ ()), (eval y $ ()))
 
-eLam : {auto aIsSig: Sig a} -> {auto notUnit: NotUnit a} -> {auto bIsSig: Sig b} -> (Eval () a -> Eval () b) -> Eval a b
+eLam : {auto aIsSig: Sig a} -> {auto notUnit: NotUnit a} -> {auto bIsSig: Sig b} 
+  -> (Eval () a -> Eval () b) -> Eval a b
+eLam f = MkEval $ \x => (eval $ f $ MkEval $ Prelude.const x) ()
 
 eApp : {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} -> Eval a b -> Eval () a -> Eval () b
-eApp (MkEval f) (MkEval x) = MkEval (\() => f (x ()))
+eApp f x = MkEval (Prelude.const $ (eval f) (eval x $ ()))
 
 
 evalImpl: Comb Eval
@@ -177,9 +157,32 @@ evalImpl': CombL Eval
 evalImpl' = 
   CombLComponents eLam eProd eFst eSnd eUnit eAdd eValue 
 
+contract: {a: _} -> {b: _}
+ -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
+ -> (t: {repr:_} -> (Comb repr) -> repr a b)
+ -> Type
+contract t = (eval $ t Main.evalImpl) = (eval $ norm t Main.evalImpl')
+
+adder: {n:_} -> {repr: _} -> (Comb repr) -> repr (BitVec n) (BitVec $ S n)
+adder comp = comp.lam $ \x => comp.add x x
+
+%hint
+p: {n:_} -> NotUnit (BitVec n, BitVec n)
+
+adder': {n:_} -> {repr: _} -> (Comb repr) -> repr (BitVec n) (BitVec $ S n)
+adder' {n} comp = 
+  comp.lam $ \y 
+    => comp.app (comp.lam $ \x => comp.add {n=n} (comp.fst x) (comp.snd x)) 
+                (comp.prod y y)
+
+adder_eq: {n:_} -> contract (Main.adder' {n=n})
+adder_eq = Refl
+
 prf: {a: _} -> {b: _}
  -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
  -> (t: {repr:_} -> (Comb repr) -> repr a b)
- -> (x: a)
- -> (eval $ t Main.evalImpl) x = (eval $ norm t Main.evalImpl') x
-prf t x = ?prf_rhs
+ -> (eval $ t Main.evalImpl) = (eval $ norm t Main.evalImpl')
+prf t = ?prf_rhs
+-- prf t with (t $ impl Main.evalImpl')
+--   prf t | (F f) = ?prf_rhs_rhs_0
+--   prf t | (C y) = ?prf_rhs_rhs_1_rhs_0

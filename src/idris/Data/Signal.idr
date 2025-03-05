@@ -12,6 +12,15 @@ public export
 data NotUnit: Type -> Type where
   NUnit: (prf: a = () -> Void) -> NotUnit a
 
+%hint
+export
+bvNotUnit: {n: _} -> NotUnit (BitVec n)
+bvNotUnit = NUnit (\x => case x of Refl impossible)
+
+%hint
+export
+prodNotUnit: {n: _} -> {p1: NotUnit a} -> {p2: NotUnit b} -> NotUnit (a, b)
+
 public export
 OfType: Type -> Type -> Type
 OfType x y = x = y
@@ -36,6 +45,5 @@ allSig prf_a (AllU prf) =
 allSig prf_a (AllP p1 p2) = 
   P (allSig prf_a p1)
     (allSig prf_a p2)
-
 
 
