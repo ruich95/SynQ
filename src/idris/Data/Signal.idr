@@ -17,9 +17,9 @@ export
 bvNotUnit: {n: _} -> NotUnit (BitVec n)
 bvNotUnit = NUnit (\x => case x of Refl impossible)
 
-%hint
-export
-prodNotUnit: {n: _} -> {p1: NotUnit a} -> {p2: NotUnit b} -> NotUnit (a, b)
+-- %hint
+-- export
+-- prodNotUnit: {n: _} -> {p1: NotUnit a} -> {p2: NotUnit b} -> NotUnit (a, b)
 
 public export
 OfType: Type -> Type -> Type
