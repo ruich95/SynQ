@@ -29,7 +29,8 @@ fromOfType x = rewrite prf in x
 public export
 data All: (pred: Type -> Type) -> Type -> Type where
   AllU: {0 pred: _} -> {x: Type} -> (pred x) -> All pred x
-  AllP: {0 pred: _} -> All pred a -> All pred b -> All pred (a, b)
+  AllP: {0 pred: _} -> {ty1: _} -> {ty2: _} 
+     -> All pred ty1 -> All pred ty2 -> All pred (ty1, ty2)
 
 -- Example about using predicates All and OfType
 exampleAllOfType: All (OfType (Nat, Nat)) (((Nat, Nat), (Nat, Nat)), (Nat, Nat))
