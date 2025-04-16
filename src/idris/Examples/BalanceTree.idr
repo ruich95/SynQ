@@ -2,6 +2,9 @@ module Examples.BalanceTree
 
 import Data.SQData
 import Sym.Comb
+import Impl.HDL
+
+%hide Data.Linear.Interface.seq
 
 rotateL: {comb: _} -> (Comb comb)
   => {auto asSig: Sig as} -> comb () as -> (prf: All (OfType ty) as)
@@ -29,7 +32,7 @@ rotateR xin (AllP {ty1} {ty2} x y) = ((ty1, ty2) ** (xin, (AllP x y, asSig)))
 
 depth: (prf: All (OfType ty) as) -> Nat
 depth (AllU x) = 0
-depth (AllP x y) = max (depth x) (depth y)
+depth (AllP x y) = S (max (depth x) (depth y))
 
 data Shape: Type where
   Balance: Shape
@@ -48,12 +51,58 @@ getShape (AllP (AllU x) (AllP rl rr))
 getShape (AllP (AllP x z) y) with (y)
   getShape (AllP (AllP ll lr) y) | (AllU x) 
     = if depth lr > depth ll then LR ll lr (AllU x) else LL
-  getShape (AllP (AllP ll lr) y) | (AllP rl rr) = ?rhs_3_rhs_1
+  getShape (AllP (AllP ll lr) y) | (AllP rl rr) 
+    = let dl = depth (AllP ll lr) 
+          dr = depth (AllP rl rr) 
+      in if dl == dr || dl == S dr || dr == S dl 
+         then Balance 
+         else if dl > dr 
+              then if depth ll > depth lr 
+                   then LL 
+                   else LR ll lr (AllP rl rr) 
+              else if depth rr > depth rl 
+                   then RR 
+                   else RL (AllP ll lr) rl rr
+                   
+allBalanced: All (OfType ty) as -> Bool
+allBalanced (AllU x) = True
+allBalanced (AllP l r) 
+  = let dl = depth l
+        dr = depth r 
+    in allBalanced l && allBalanced r 
+    && ((dl == dr) || (dl == S dr) || (S dl == dl))
 
--- getShape (AllP (AllU x) (AllU y)) = Balance
--- getShape (AllP (AllU x) (AllP rl rr)) = ?rhs -- if depth rl > depth rr then RL (AllU x) rl rr else RR
--- getShape (AllP (AllP ll lr) (AllU z)) = ?rhsw -- if depth lr > depth ll then LR ll lr (AllU z) else LL
--- getShape (AllP (AllP x y) (AllP z w)) = ?rhs_4
+balance: {comb: _} -> (Comb comb)
+  => {default 20 max_iter: Nat} 
+  -> {auto asSig: Sig as} -> comb () as -> {auto shape: All (OfType ty) as}
+  -> (bs: Type ** (comb () bs, All (OfType ty) bs, Sig bs))
+balance x {shape = (AllU y)} = (as ** (x, (AllU y, asSig)))
+balance {max_iter = 0} x {shape = (AllP {ty1 = ty1} {ty2 = ty2} y z)} 
+  = ((ty1, ty2) ** (x, (AllP y z, asSig)))
+balance {max_iter = (S k)} {asSig=P lSig rSig} tr 
+        {shape = (AllP {ty1 = ty1} {ty2 = ty2} shapeL shapeR)} 
+  = if allBalanced (AllP shapeL shapeR) then ((ty1, ty2) ** (tr, (AllP shapeL shapeR, P lSig rSig)))
+    else let left  = proj1 tr
+             right = proj2 tr
+         in case getShape (AllP shapeL shapeR) of
+                 Balance => 
+                   let (lty ** (left', allL, sigL))  = balance {max_iter = S k} left  {shape=shapeL}
+                       (rty ** (right', allR, sigR)) = balance {max_iter = S k} right {shape=shapeR}
+                   in ((lty, rty) ** (prod left' right', AllP allL allR, P sigL sigR))
+                 LL => 
+                   let (ty' ** (tr', all', sig')) = rotateR tr (AllP shapeL shapeR)
+                   in balance {max_iter=k} tr' {shape=all'}
+                 RR => 
+                   let (ty' ** (tr', all', sig')) = rotateL tr (AllP shapeL shapeR)
+                   in balance {max_iter=k} tr' {shape=all'}
+                 (LR leftL leftR x) =>
+                   let (tyl ** (left', allL, sigL)) = rotateL left shapeL
+                       (ty' ** (tr', all', sig')) = rotateR (prod left' right) (AllP allL shapeR)
+                   in balance {max_iter=k} tr' {shape=all'}
+                 (RL x rightL rightR) => 
+                   let (tyr ** (right', allR, sigR)) = rotateR right shapeR
+                       (ty' ** (tr', all', sig')) = rotateR (prod left right') (AllP shapeL allR)
+                   in balance {max_iter=k} tr' {shape=all'}
 
 rotateL2: {comb: _} -> (Comb comb)
   => {auto asSig: Sig as} -> comb () as -> {auto prf: All (OfType ty) as}
@@ -62,16 +111,36 @@ rotateL2 x =
   let (ty1 ** (y, yPrf, ySig1)) = rotateL x prf
   in rotateL y yPrf
   
+tAll: All (OfType $ BitVec 8) (BitVec 8, ((BitVec 8, (BitVec 8, (BitVec 8, BitVec 8))) , BitVec 8))
+tAll = AllP (AllU Refl) 
+            (AllP (AllP (AllU Refl) 
+                        (AllP (AllU Refl) (AllP (AllU Refl) 
+                                                (AllU Refl)))) 
+                  (AllU Refl))
+
+%hint
+lteSucc: (n:Nat) -> LTE n (S n)
+lteSucc 0 = LTEZero
+lteSucc (S k) = LTESucc (lteSucc k)
+
+adder: {comb:_} -> {n:_} 
+  -> (Comb comb, Primitive comb)
+  => comb (BitVec n, BitVec n) (BitVec n)
+adder = lam $ \x => lower' n (add (proj1 x) (proj2 x))
+
 test: {comb: _} -> (Comb comb, Primitive comb)
-  => comb () (BitVec 8, (BitVec 8, (BitVec 8, BitVec 8)))
-  
-t_prf: All (OfType $ BitVec 8) (BitVec 8, (BitVec 8, (BitVec 8, BitVec 8)))
-t_prf = AllP (AllU Refl) (AllP (AllU Refl) (AllP (AllU Refl) (AllU Refl)))
+  => comb (BitVec 8, ((BitVec 8, (BitVec 8, (BitVec 8, BitVec 8))) , BitVec 8)) 
+          (BitVec 8)
+test = 
+  lam $ \xin => 
+    let (ty ** (xin', all', sig')) = balance xin {shape=tAll} 
+    in (reduce adder) << xin'
 
-test2: {comb: _} -> (Comb comb, Primitive comb)
-  => (ty:Type ** comb () ty)
-test2 = let (ty ** (x, _, _)) = rotateL {comb} test t_prf in (ty ** x)
+-- test2: {comb: _} -> (Comb comb, Primitive comb)
+--   => (ty:Type ** comb () ty)
+-- test2 = let (ty ** (x, _, _)) = balance {max_iter=7} test {shape=tAll} in (ty ** x) 
+-- -- rotateL {comb} test t_prf in (ty ** x)
 
-test2': {comb: _} -> (Comb comb, Primitive comb)
-  => fst (BalanceTree.test2 {comb=comb}) = ((BitVec 8, BitVec 8), (BitVec 8, BitVec 8))
-test2' = Refl
+-- test2': {comb: _} -> (Comb comb, Primitive comb)
+--   => fst (BalanceTree.test2 {comb=comb}) = ((BitVec 8, BitVec 8), (BitVec 8, BitVec 8))
+-- test2' = ?rhs -- Refl
