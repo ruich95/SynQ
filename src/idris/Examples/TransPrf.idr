@@ -86,6 +86,7 @@ lam f = F {notUnit = notUnit} $
                     => case prf Refl of _ impossible
                 (C z) => z
 
+
 app: {repr: _}
   -> E repr a b -> E repr () a -> E repr () b
 app (F f) (F {notUnit = (NUnit prf)} g) 
@@ -111,7 +112,7 @@ abst lam (C x) = val x
 addPrf: {repr: _} -> {n:_} -> (cl: CombL repr) -> (c: Comb repr)
   -> (x: repr () $ BitVec n) -> (y: repr () $ BitVec n)
   -> ((lift2 c.add) (C $ Val x) (C $ Val y)) = ((impl cl).add (C $ Val x) (C $ Val y))
-addPrf cl c x y = ?rhs
+addPrf cl c x y = ?rhs'
 
 norm: {a: _} -> {b: _}
  -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
