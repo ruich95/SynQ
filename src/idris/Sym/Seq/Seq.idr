@@ -6,6 +6,7 @@ import Data.BitVec
 import Data.Signal
 import Data.State
 
+%hide Data.Linear.Interface.seq
 
 public export
 interface Comb comb 

@@ -3,6 +3,7 @@ module Examples.BalanceTree
 import Data.SQData
 import Sym.Comb
 import Impl.HDL
+import Impl.Eval
 
 %hide Data.Linear.Interface.seq
 
@@ -70,7 +71,7 @@ allBalanced (AllP l r)
   = let dl = depth l
         dr = depth r 
     in allBalanced l && allBalanced r 
-    && ((dl == dr) || (dl == S dr) || (S dl == dl))
+    && ((dl == dr) || (dl == S dr) || (S dl == dr))
 
 balance: {comb: _} -> (Comb comb)
   => {default 20 max_iter: Nat} 
@@ -103,13 +104,6 @@ balance {max_iter = (S k)} {asSig=P lSig rSig} tr
                    let (tyr ** (right', allR, sigR)) = rotateR right shapeR
                        (ty' ** (tr', all', sig')) = rotateR (prod left right') (AllP shapeL allR)
                    in balance {max_iter=k} tr' {shape=all'}
-
-rotateL2: {comb: _} -> (Comb comb)
-  => {auto asSig: Sig as} -> comb () as -> {auto prf: All (OfType ty) as}
-  -> (bs: Type ** (comb () bs, All (OfType ty) bs, Sig bs))
-rotateL2 x = 
-  let (ty1 ** (y, yPrf, ySig1)) = rotateL x prf
-  in rotateL y yPrf
   
 tAll: All (OfType $ BitVec 8) (BitVec 8, ((BitVec 8, (BitVec 8, (BitVec 8, BitVec 8))) , BitVec 8))
 tAll = AllP (AllU Refl) 
@@ -117,6 +111,36 @@ tAll = AllP (AllU Refl)
                         (AllP (AllU Refl) (AllP (AllU Refl) 
                                                 (AllU Refl)))) 
                   (AllU Refl))
+
+balancedReduce: {default 20 max_iter: Nat} 
+  -> {comb:_} -> (Comb comb)
+  => {auto aIsSig: Sig a}
+  -> {auto allA: All (OfType a) as}
+  -> (f: comb (a, a) a)
+  -> comb as a
+balancedReduce f = 
+  lam $ \xin => case balance {max_iter=max_iter} xin {shape=allA} of
+                     (ty ** (xin', all', sig')) => app (reduce f) xin'
+
+balance_lemma1: {ty:_} -> {as:_} -> {bs:_} -> {comb: _} -> (Comb comb) => {auto asSig: Sig as} -> {auto bsSig: Sig bs} 
+  -> (xin: comb () (as, bs)) -> (shape1: All (OfType ty) as) -> (shape2: All (OfType ty) bs)
+  -> (allBalanced {ty=ty} (the (All (OfType ty) (as, bs)) $ AllP {ty1=as} {ty2=bs} shape1 shape2) = True) 
+  -> (balance {comb=comb} {max_iter=1} {ty=ty} {asSig=(P asSig bsSig)} xin {shape=(AllP {ty1=as} {ty2=bs} shape1 shape2)})
+   = ((as, bs) ** (xin, (the (All (OfType ty) (as, bs)) $ AllP {ty1=as} {ty2=bs} shape1 shape2), (P asSig bsSig)))
+balance_lemma1 xin shape1 shape2 prf = rewrite prf in Refl
+
+combLemma: (xin: Eval.Combinational () as) -> MkComb (\value => xin .runComb ()) = xin
+
+reduceEq: {a:_} -> {as:_} -> {auto aIsSig: Sig a} -> (allA: All (OfType a) as)
+  -> (f: Eval.Combinational (a, a) a) -> (xin: Eval.Combinational () as)
+  -> (runComb $ app (reduce {prf1=aIsSig} f) xin) () = (runComb $ app (balancedReduce {max_iter=1} {aIsSig=aIsSig} {allA = allA} f) xin) ()
+reduceEq (AllU x) f xin = Refl
+reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f xin with (proj1 xin, proj2 xin)
+  reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f xin | (xin1, xin2) with (allBalanced (AllP all1 all2)) proof p
+    reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f xin | (xin1, xin2) | False = ?rhs_rhs_0
+    reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f xin | (xin1, xin2) | True 
+      = let eq_prf = balance_lemma1 {ty=a} {as=ty1} {bs=ty2} {comb=Eval.Combinational} xin all1 all2 p 
+        in rewrite combLemma xin in rewrite eq_prf in ?rhs
 
 %hint
 lteSucc: (n:Nat) -> LTE n (S n)
@@ -128,19 +152,7 @@ adder: {comb:_} -> {n:_}
   => comb (BitVec n, BitVec n) (BitVec n)
 adder = lam $ \x => lower' n (add (proj1 x) (proj2 x))
 
-test: {comb: _} -> (Comb comb, Primitive comb)
+balancedSum: {comb: _} -> (Comb comb, Primitive comb)
   => comb (BitVec 8, ((BitVec 8, (BitVec 8, (BitVec 8, BitVec 8))) , BitVec 8)) 
           (BitVec 8)
-test = 
-  lam $ \xin => 
-    let (ty ** (xin', all', sig')) = balance xin {shape=tAll} 
-    in (reduce adder) << xin'
-
--- test2: {comb: _} -> (Comb comb, Primitive comb)
---   => (ty:Type ** comb () ty)
--- test2 = let (ty ** (x, _, _)) = balance {max_iter=7} test {shape=tAll} in (ty ** x) 
--- -- rotateL {comb} test t_prf in (ty ** x)
-
--- test2': {comb: _} -> (Comb comb, Primitive comb)
---   => fst (BalanceTree.test2 {comb=comb}) = ((BitVec 8, BitVec 8), (BitVec 8, BitVec 8))
--- test2' = ?rhs -- Refl
+balancedSum = balancedReduce adder {allA=tAll}

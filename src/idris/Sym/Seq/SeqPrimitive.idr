@@ -5,6 +5,8 @@ import Data.State
 
 import Sym.Comb
 
+%hide Data.Linear.Interface.seq
+
 public export
 interface Comb comb 
   => Reg (comb: Type -> Type -> Type)
