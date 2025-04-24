@@ -122,25 +122,16 @@ balancedReduce f =
   lam $ \xin => case balance {max_iter=max_iter} xin {shape=allA} of
                      (ty ** (xin', all', sig')) => app (reduce f) xin'
 
-balance_lemma1: {ty:_} -> {as:_} -> {bs:_} -> {comb: _} -> (Comb comb) => {auto asSig: Sig as} -> {auto bsSig: Sig bs} 
-  -> (xin: comb () (as, bs)) -> (shape1: All (OfType ty) as) -> (shape2: All (OfType ty) bs)
-  -> (allBalanced {ty=ty} (the (All (OfType ty) (as, bs)) $ AllP {ty1=as} {ty2=bs} shape1 shape2) = True) 
-  -> (balance {comb=comb} {max_iter=1} {ty=ty} {asSig=(P asSig bsSig)} xin {shape=(AllP {ty1=as} {ty2=bs} shape1 shape2)})
-   = ((as, bs) ** (xin, (the (All (OfType ty) (as, bs)) $ AllP {ty1=as} {ty2=bs} shape1 shape2), (P asSig bsSig)))
-balance_lemma1 xin shape1 shape2 prf = rewrite prf in Refl
-
-combLemma: (xin: Eval.Combinational () as) -> MkComb (\value => xin .runComb ()) = xin
-
 reduceEq: {a:_} -> {as:_} -> {auto aIsSig: Sig a} -> (allA: All (OfType a) as)
   -> (f: Eval.Combinational (a, a) a) -> (xin: Eval.Combinational () as)
-  -> (runComb $ app (reduce {prf1=aIsSig} f) xin) () = (runComb $ app (balancedReduce {max_iter=1} {aIsSig=aIsSig} {allA = allA} f) xin) ()
+  -> (runComb $ app (reduce {prf1=aIsSig} f) xin) () = (runComb $ app (balancedReduce {max_iter=1} f) xin) ()
 reduceEq (AllU x) f xin = Refl
-reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f xin with (proj1 xin, proj2 xin)
-  reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f xin | (xin1, xin2) with (allBalanced (AllP all1 all2)) proof p
-    reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f xin | (xin1, xin2) | False = ?rhs_rhs_0
-    reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f xin | (xin1, xin2) | True 
-      = let eq_prf = balance_lemma1 {ty=a} {as=ty1} {bs=ty2} {comb=Eval.Combinational} xin all1 all2 p 
-        in rewrite combLemma xin in rewrite eq_prf in ?rhs
+reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f xin with (allBalanced (AllP all1 all2))
+  reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f xin | False = ?rhs0
+  reduceEq (AllP all1 all2) f xin | True = Refl
+  
+    -- reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f xin | (xin1, xin2) | False = ?rhs_rhs_0
+    -- reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f xin | (xin1, xin2) | True = Refl
 
 %hint
 lteSucc: (n:Nat) -> LTE n (S n)

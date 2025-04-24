@@ -37,7 +37,7 @@ exampleAllOfType: All (OfType (Nat, Nat)) (((Nat, Nat), (Nat, Nat)), (Nat, Nat))
 exampleAllOfType = AllP (AllP (AllU Refl) (AllU Refl)) (AllU Refl)
 
 %hint
-export
+public export
 allSig: Sig a -> All (OfType a) as -> Sig as
 allSig prf_a (AllU prf) = 
   rewrite sym $ prf in prf_a
