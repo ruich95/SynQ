@@ -20,11 +20,13 @@ record Comb (repr: Type -> Type -> Type) where
   snd: {a:_} -> {b:_} 
     -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} 
     -> repr () (a, b) -> repr () b
-  unit: repr () ()
-  
+  unit: repr () ()  
   add: {n: _} -> repr () (BitVec n) -> repr () (BitVec n) -> repr () (BitVec $ S n)
   value: {n: _} -> BitVec n -> repr () (BitVec n) 
-  
+
+%hint
+prodNotUnit: NotUnit (a, b)
+
 record CombL (repr: Type -> Type -> Type) where
   constructor CombLComponents
   lam: {a:_} -> {b:_} 
@@ -134,9 +136,11 @@ eUnit : Eval () ()
 
 eSnd : {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} 
   -> Eval () (a, b) -> Eval () b
+eSnd x = MkEval $ Prelude.const $ snd (eval x $ ())
 
 eFst : {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} 
   -> Eval () (a, b) -> Eval () a
+eFst x = MkEval $ Prelude.const $ fst (eval x $ ())
 
 eProd : {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} 
   -> Eval () a -> Eval () b -> Eval () (a, b)
@@ -148,7 +152,6 @@ eLam f = MkEval $ \x => (eval $ f $ MkEval $ Prelude.const x) ()
 
 eApp : {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} -> Eval a b -> Eval () a -> Eval () b
 eApp f x = MkEval (Prelude.const $ (eval f) (eval x $ ()))
-
 
 evalImpl: Comb Eval
 evalImpl = 
@@ -179,6 +182,35 @@ adder' {n} comp =
 adder_eq: {n:_} -> contract (Main.adder' {n=n})
 adder_eq = Refl
 
+swap: {a: _} -> {b: _} 
+   -> {auto aIsSig: Sig a} 
+   -> {auto bIsSig: Sig b} 
+   -> {comb: _} -> (Comb comb) -> comb (a, b) (b, a)
+swap glue = glue.lam $ \x => glue.prod (glue.snd x) (glue.fst x)
+
+swap_eq: {a:_} -> {b:_} -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} 
+  -> contract {a = (a, b)} {b = (b, a)} Main.swap
+swap_eq = Refl
+
+f: {a:_} -> {b:_} -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} 
+  -> {auto prf: contract {a = (a, b)} {b = (b, a)} Main.swap} 
+  -> Nat
+f = 0
+
+g: {a:_} -> {b:_} -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} 
+  -> Nat
+g = f {a} {b}
+
+eSwap: {a: _} -> {b: _}
+   -> {auto aIsSig: Sig a} 
+   -> {auto bIsSig: Sig b}
+   -> (a, b) -> (b, a)
+eSwap = eval (swap evalImpl)
+
+eSwapPrf: {a: _} -> {b: _} -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
+   -> (x: a) -> (y: b) -> eSwap (eSwap (x, y)) = (x, y)
+eSwapPrf x y = Refl
+
 prf: {a: _} -> {b: _}
  -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
  -> (t: {repr:_} -> (Comb repr) -> repr a b)
@@ -187,3 +219,5 @@ prf t = ?prf_rhs
 -- prf t with (t $ impl Main.evalImpl')
 --   prf t | (F f) = ?prf_rhs_rhs_0
 --   prf t | (C y) = ?prf_rhs_rhs_1_rhs_0
+
+
