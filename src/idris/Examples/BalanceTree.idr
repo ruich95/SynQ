@@ -7,29 +7,45 @@ import Impl.Eval
 
 %hide Data.Linear.Interface.seq
 
-rotateL: {comb: _} -> (Comb comb)
-  => {auto asSig: Sig as} -> comb () as -> (prf: All (OfType ty) as)
-  -> (bs: Type ** (comb () bs, All (OfType ty) bs, Sig bs))
-rotateL xin (AllP {ty1 = xTy} x (AllP {ty1=yTy} {ty2=zTy} y z))
-  = let (P sX (P sY sZ)) = asSig 
-        x1 = proj1 xin
-        x2 = proj1 $ proj2 xin
-        x3 = proj2 $ proj2 xin
-    in (((xTy, yTy), zTy) ** (prod (prod x1 x2) x3, AllP (AllP x y) z, P (P sX sY) sZ))
-rotateL xin (AllU x) = (as ** (xin, AllU x, asSig))
-rotateL xin (AllP {ty1} {ty2} x y) = ((ty1, ty2) ** (xin, AllP x y, asSig))
+rotateL: {a:_} -> {as:_} -> {comb: _} -> (Comb comb)
+  => {auto asSig: Sig as} -> comb () as -> (prf: All (OfType a) as)
+  -> (bs: Type ** (comb () bs, All (OfType a) bs, Sig bs))
+rotateL {as = a} xin (AllU Refl) = (a ** (xin, (AllU Refl, asSig)))
+rotateL {a} {as = (ty1, ty2)} xin (AllP x y) with (y)
+  rotateL {a} {as = (ty1, a)} xin (AllP x y) | (AllU Refl) = ((ty1, a) ** (xin, (AllP x y, asSig)))
+  rotateL {as = (ty1, (ty21, ty22))} xin (AllP x y) | (AllP z w) -- = ?rotateL_rhs_1_rhs_1
+    = let (P sX (P sZ sW)) = asSig 
+          x1 = proj1 xin
+          x2 = proj1 $ proj2 xin
+          x3 = proj2 $ proj2 xin
+      in (((ty1, ty21), ty22) ** (prod (prod x1 x2) x3, AllP (AllP x z) w, P (P sX sZ) sW))
 
-rotateR: {comb: _} -> (Comb comb)
-  => {auto asSig: Sig as} -> comb () as -> (prf: All (OfType ty) as)
-  -> (bs: Type ** (comb () bs, All (OfType ty) bs, Sig bs))
-rotateR xin (AllP {ty2=zTy} (AllP {ty1=xTy} {ty2=yTy} x y) z) 
-  = let (P (P sX sY) sZ) = asSig 
-        x1 = proj1 $ proj1 xin
-        x2 = proj2 $ proj1 xin
-        x3 = proj2 xin
-    in ((xTy, (yTy, zTy)) ** (prod x1 (prod x2 x3), AllP x (AllP y z), P sX (P sY sZ)))
-rotateR xin (AllU x) = (as ** (xin, (AllU x, asSig)))
-rotateR xin (AllP {ty1} {ty2} x y) = ((ty1, ty2) ** (xin, (AllP x y, asSig)))
+-- rotateL xin (AllP {ty1 = xTy} x (AllP {ty1=yTy} {ty2=zTy} y z))
+--   = let (P sX (P sY sZ)) = asSig 
+--         x1 = proj1 xin
+--         x2 = proj1 $ proj2 xin
+--         x3 = proj2 $ proj2 xin
+--     in (((xTy, yTy), zTy) ** (prod (prod x1 x2) x3, AllP (AllP x y) z, P (P sX sY) sZ))
+-- rotateL xin (AllU x) = (as ** (xin, AllU x, asSig))
+-- rotateL xin (AllP {ty1} {ty2} x y) = ((ty1, ty2) ** (xin, AllP x y, asSig))
+
+rotateR: {a:_} -> {as:_} -> {comb: _} -> (Comb comb)
+  => {auto asSig: Sig as} -> comb () as -> (prf: All (OfType a) as)
+  -> (bs: Type ** (comb () bs, All (OfType a) bs, Sig bs))
+rotateR {as = a} xin (AllU Refl) = (a ** (xin, (AllU Refl, asSig)))
+rotateR {a} {as=(ty1, ty2)} xin (AllP y z) with (y)
+  rotateR {a} {as=(a, ty2)} xin (AllP y z) | (AllU Refl) = ((a, ty2) ** (xin, (AllP y z, asSig)))
+  rotateR {as=((ty11, ty12), ty2)} xin (AllP y z) | (AllP x w)
+    = let (P (P sX sW) sZ) = asSig 
+          x1 = proj1 $ proj1 xin
+          x2 = proj2 $ proj1 xin
+          x3 = proj2 xin
+      in ((ty11, (ty12, ty2)) ** (prod x1 (prod x2 x3), AllP x (AllP w z), P sX (P sW sZ)))
+
+-- rotateR_lemma: {as: _} -> {a:_} -> {comb: _} -> (Comb comb)
+--   => {auto aSig: Sig a} -> (xin: comb () (a, as)) -> (prf: All (OfType a) as)
+--   -> (rotateR {a=a} {as=(a, as)} xin (AllP (AllU Refl) prf)) = ((a, as) ** (xin, (AllP (AllU Refl) prf), P aSig (allSig aSig prf)))
+-- rotateR_lemma xin prf = Refl
 
 depth: (prf: All (OfType ty) as) -> Nat
 depth (AllU x) = 0
@@ -73,7 +89,7 @@ allBalanced (AllP l r)
     in allBalanced l && allBalanced r 
     && ((dl == dr) || (dl == S dr) || (S dl == dr))
 
-balance: {comb: _} -> (Comb comb)
+balance: {ty:_} -> {comb: _} -> (Comb comb)
   => {default 20 max_iter: Nat} 
   -> {auto asSig: Sig as} -> comb () as -> {auto shape: All (OfType ty) as}
   -> (bs: Type ** (comb () bs, All (OfType ty) bs, Sig bs))
@@ -102,17 +118,10 @@ balance {max_iter = (S k)} {asSig=P lSig rSig} tr
                    in balance {max_iter=k} tr' {shape=all'}
                  (RL x rightL rightR) => 
                    let (tyr ** (right', allR, sigR)) = rotateR right shapeR
-                       (ty' ** (tr', all', sig')) = rotateR (prod left right') (AllP shapeL allR)
+                       (ty' ** (tr', all', sig')) = rotateL (prod left right') (AllP shapeL allR)
                    in balance {max_iter=k} tr' {shape=all'}
-  
-tAll: All (OfType $ BitVec 8) (BitVec 8, ((BitVec 8, (BitVec 8, (BitVec 8, BitVec 8))) , BitVec 8))
-tAll = AllP (AllU Refl) 
-            (AllP (AllP (AllU Refl) 
-                        (AllP (AllU Refl) (AllP (AllU Refl) 
-                                                (AllU Refl)))) 
-                  (AllU Refl))
 
-balancedReduce: {default 20 max_iter: Nat} 
+balancedReduce: {a:_} -> {default 20 max_iter: Nat} 
   -> {comb:_} -> (Comb comb)
   => {auto aIsSig: Sig a}
   -> {auto allA: All (OfType a) as}
@@ -121,22 +130,95 @@ balancedReduce: {default 20 max_iter: Nat}
 balancedReduce f = 
   lam $ \xin => case balance {max_iter=max_iter} xin {shape=allA} of
                      (ty ** (xin', all', sig')) => app (reduce f) xin'
+                     
+leftAssoc: {comb:_} -> (Comb comb)
+  => {auto aIsSig: Sig a}
+  -> (f: comb (a, a) a)
+  -> comb ((a, a), a) a
+leftAssoc f = lam $ \x => app f (prod (app f $ proj1 x) (proj2 x))
+
+rightAssoc: {comb:_} -> (Comb comb)
+  => {auto aIsSig: Sig a}
+  -> (f: comb (a, a) a)
+  -> comb (a, (a, a)) a
+rightAssoc f = lam $ \x => app f (prod (proj1 x) (app f $ proj2 x))
+
+assoc: {a:_} -> {auto aIsSig: Sig a} 
+  -> (f: Eval.Combinational (a, a) a) 
+  -> Type
+assoc f = (x: a) -> (y: a) -> (z: a) 
+  -> (runComb (leftAssoc f) $ ((x, y), z)) 
+   = (runComb (rightAssoc f) $ (x, (y, z)))
 
 reduceEq: {a:_} -> {as:_} -> {auto aIsSig: Sig a} -> (allA: All (OfType a) as)
-  -> (f: Eval.Combinational (a, a) a) -> (xin: Eval.Combinational () as)
-  -> (runComb $ app (reduce {prf1=aIsSig} f) xin) () = (runComb $ app (balancedReduce {max_iter=1} f) xin) ()
-reduceEq (AllU x) f xin = Refl
-reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f xin with (allBalanced (AllP all1 all2))
-  reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f xin | False = ?rhs0
-  reduceEq (AllP all1 all2) f xin | True = Refl
-  
-    -- reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f xin | (xin1, xin2) | False = ?rhs_rhs_0
-    -- reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f xin | (xin1, xin2) | True = Refl
+  -> (f: Eval.Combinational (a, a) a) -> (xin: as)
+  -> (assoc_f: assoc f)
+  -> (runComb (reduce {as=as} {prf1=aIsSig} f) $ xin) = (runComb (balancedReduce {max_iter=1} f) $ xin)
+reduceEq (AllU x) f xin assoc_f = Refl
+reduceEq {a} (AllP {ty1=ty1} {ty2=ty2} all1 all2) f xin assoc_f with (allBalanced (AllP all1 all2))
+  reduceEq {a} (AllP {ty1=ty1} {ty2=ty2} all1 all2) f (xin1, xin2) assoc_f | False  with (getShape (AllP all1 all2))
+    reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f (xin1, xin2) assoc_f | False  | Balance = ?case_balance
+    reduceEq {a} (AllP {ty1=a} {ty2=ty2} (AllU Refl) all2) f (xin1, xin2) assoc_f | False  | LL = Refl
+    reduceEq (AllP {ty1=(ty11, ty12)} {ty2=ty2} (AllP x y) all2) f (xin1, xin2) assoc_f | False  | LL with %syntactic (xin1)
+      reduceEq (AllP {ty1=(ty11, ty12)} {ty2=ty2} (AllP x y) all2) f (xin1, xin2) assoc_f | False  | LL | (xin11, xin12) 
+        = let assoc_prf = assoc_f (runComb (reduce f) $ xin11) 
+                                  (runComb (reduce f) $ xin12) 
+                                  (runComb (reduce f) $ xin2)
+          in rewrite assoc_prf in Refl
+    reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f (xin1, xin2) assoc_f | False  | RR = ?case_rr
+    reduceEq {a} (AllP {ty1=a} {ty2=ty2} (AllU Refl) all2) f (xin1, xin2) assoc_f | False  | (LR _ _ _) = Refl
+    reduceEq {a} (AllP {ty1=(ty11, ty12)} {ty2=ty2} (AllP x y) all2) f (xin1, xin2) assoc_f | False  | (LR _ _ _) with %syntactic (xin1)
+      reduceEq {a} (AllP {ty1=(ty11, ty12)} {ty2=a} (AllP x y) (AllU Refl)) f (xin1, xin2) assoc_f 
+          | False  | (LR _ _ _) | (xin11, xin12) with %syntactic (y)
+        reduceEq {a} (AllP {ty1=(ty11, a)} {ty2=a} (AllP x y) (AllU Refl)) f (xin1, xin2) assoc_f 
+          | False  | (LR _ _ _) | (xin11, xin12) | (AllU Refl) = assoc_f (runComb (reduce f) $ xin11) xin12 xin2
+        reduceEq {a} (AllP {ty1=(ty11, (ty121, ty122))} {ty2=a} (AllP x y) (AllU Refl)) f (xin1, xin2) assoc_f 
+          | False  | (LR _ _ _) | (xin11, xin12) | (AllP z w) = 
+            let assoc_prf1 = assoc_f (runComb (reduce f) $ xin11) 
+                                     ((runComb f) ((runComb (reduce f) $ fst xin12), 
+                                                   (runComb (reduce f) $ snd xin12))) 
+                                     xin2
+                assoc_prf2 = assoc_f (runComb (reduce f) $ fst xin12) 
+                                     (runComb (reduce f) $ snd xin12)
+                                     xin2
+                assoc_prf3 = sym $ assoc_f (runComb (reduce f) $ xin11) 
+                                           (runComb (reduce f) $ fst xin12) 
+                                           (runComb f $ ((runComb (reduce f) $ snd xin12), xin2))
+            in rewrite assoc_prf1 in 
+               rewrite assoc_prf2 in 
+               assoc_prf3
+      reduceEq (AllP {ty1=(ty11, ty12)} {ty2=(ty1, ty2)} (AllP x1 y1) (AllP x2 y2)) f (xin1, xin2) assoc_f 
+          | False  | (LR _ _ _) | (xin11, xin12) with %syntactic (y1)
+        reduceEq (AllP {ty1=(ty11, a)} {ty2=(ty1, ty2)} (AllP x1 y1) (AllP x2 y2)) f (xin1, xin2) assoc_f 
+          | False  | (LR _ _ _) | (xin11, xin12) | (AllU Refl) = 
+            assoc_f (runComb (reduce f) $ xin11) xin12 
+                    (runComb f $ (runComb (reduce f) $ fst xin2, 
+                                  runComb (reduce f) $ snd xin2))
+        reduceEq (AllP {ty1=(ty11, ty121, ty122)} {ty2=(ty1, ty2)} (AllP x1 y1) (AllP x2 y2)) f (xin1, xin2) assoc_f 
+          | False  | (LR _ _ _) | (xin11, xin12) | (AllP z w) = 
+            let assoc_prf1 = sym $ assoc_f (runComb (reduce f) $ xin11) 
+                                           (runComb (reduce f) $ fst xin12) 
+                                           (runComb (reduce f) $ snd xin12)
+                assoc_prf2 = assoc_f (runComb f $ (runComb (reduce f) $ xin11, 
+                                                   runComb (reduce f) $ fst xin12))
+                                     (runComb (reduce f) $ snd xin12)
+                                     (runComb f $ (runComb (reduce f) $ fst xin2, 
+                                                   runComb (reduce f) $ snd xin2))
+            in rewrite assoc_prf1 in assoc_prf2
+    reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f (xin1, xin2) assoc_f | False  | (RL left rightL rightR) = ?case_rl
+  reduceEq (AllP all1 all2) f xin assoc_f | True = Refl
 
 %hint
 lteSucc: (n:Nat) -> LTE n (S n)
 lteSucc 0 = LTEZero
 lteSucc (S k) = LTESucc (lteSucc k)
+
+tAll: All (OfType $ BitVec 8) (BitVec 8, ((BitVec 8, (BitVec 8, (BitVec 8, BitVec 8))) , BitVec 8))
+tAll = AllP (AllU Refl) 
+            (AllP (AllP (AllU Refl) 
+                        (AllP (AllU Refl) (AllP (AllU Refl) 
+                                                (AllU Refl)))) 
+                  (AllU Refl))
 
 adder: {comb:_} -> {n:_} 
   -> (Comb comb, Primitive comb)
