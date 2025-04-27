@@ -20,15 +20,6 @@ rotateL {a} {as = (ty1, ty2)} xin (AllP x y) with (y)
           x3 = proj2 $ proj2 xin
       in (((ty1, ty21), ty22) ** (prod (prod x1 x2) x3, AllP (AllP x z) w, P (P sX sZ) sW))
 
--- rotateL xin (AllP {ty1 = xTy} x (AllP {ty1=yTy} {ty2=zTy} y z))
---   = let (P sX (P sY sZ)) = asSig 
---         x1 = proj1 xin
---         x2 = proj1 $ proj2 xin
---         x3 = proj2 $ proj2 xin
---     in (((xTy, yTy), zTy) ** (prod (prod x1 x2) x3, AllP (AllP x y) z, P (P sX sY) sZ))
--- rotateL xin (AllU x) = (as ** (xin, AllU x, asSig))
--- rotateL xin (AllP {ty1} {ty2} x y) = ((ty1, ty2) ** (xin, AllP x y, asSig))
-
 rotateR: {a:_} -> {as:_} -> {comb: _} -> (Comb comb)
   => {auto asSig: Sig as} -> comb () as -> (prf: All (OfType a) as)
   -> (bs: Type ** (comb () bs, All (OfType a) bs, Sig bs))
@@ -41,11 +32,6 @@ rotateR {a} {as=(ty1, ty2)} xin (AllP y z) with (y)
           x2 = proj2 $ proj1 xin
           x3 = proj2 xin
       in ((ty11, (ty12, ty2)) ** (prod x1 (prod x2 x3), AllP x (AllP w z), P sX (P sW sZ)))
-
--- rotateR_lemma: {as: _} -> {a:_} -> {comb: _} -> (Comb comb)
---   => {auto aSig: Sig a} -> (xin: comb () (a, as)) -> (prf: All (OfType a) as)
---   -> (rotateR {a=a} {as=(a, as)} xin (AllP (AllU Refl) prf)) = ((a, as) ** (xin, (AllP (AllU Refl) prf), P aSig (allSig aSig prf)))
--- rotateR_lemma xin prf = Refl
 
 depth: (prf: All (OfType ty) as) -> Nat
 depth (AllU x) = 0
@@ -129,7 +115,6 @@ balancedReduce: {a:_} -> {default 20 max_iter: Nat}
   -> comb as a
 balancedReduce f = 
   lam $ \xin => case balance {max_iter=max_iter} xin {shape=allA} of
-                     -- (ty ** (prod xin1 xin2, all', sig')) => app (reduce f) (prod xin1 xin2)
                      (ty ** (xin', all', sig')) => app (reduce f) xin'
                      
 leftAssoc: {comb:_} -> (Comb comb)
@@ -150,98 +135,123 @@ assoc: {a:_} -> {auto aIsSig: Sig a}
 assoc f = (x: a) -> (y: a) -> (z: a) 
   -> (runComb (leftAssoc f) $ ((x, y), z)) 
    = (runComb (rightAssoc f) $ (x, (y, z)))
-   
-reduce_lemma: {comb:_} -> (Comb comb) 
-  => {aIsSig: Sig a} 
-  -> (allA: All (OfType a) as) -> (allB: All (OfType a) bs)
-  -> (f: comb (a, a) a)
-  -> reduce {prf2 = AllP allA allB} f = f << (reduce {prf2 = allA} f) <> (reduce {prf2 = allB} f)
-reduce_lemma allA allB f = Refl
 
-balance_lemma: {a:_} -> {as:_} -> {auto aIsSig: Sig a} -> (allA: All (OfType a) as)
+balance_lemma_ty: (max_iter: Nat) -> Type 
+balance_lemma_ty max_iter =
+     {a:_} -> {as:_} -> {auto aIsSig: Sig a} -> (allA: All (OfType a) as)
   -> (f: Eval.Combinational (a, a) a) -> (xin: as)
   -> (assoc_f: assoc f)
   -> {as': _} -> {xin': _} -> {allA': All (OfType a) as'} -> {sigAs': Sig as'}
-  -> (as' ** (xin', allA', sigAs')) = balance {ty=a} {comb=Eval.Combinational} {max_iter=1} {asSig=allSig aIsSig allA} (MkComb $ \x => xin) {shape=allA}
-  -> (runComb (reduce {as=as} {prf2=allA} f) $ xin) = ((runComb $ app (reduce {prf2=allA'} f) xin') ())
+  -> (as' ** (xin', allA', sigAs')) 
+  = balance {ty=a} {comb=Eval.Combinational} 
+            {max_iter=max_iter} {asSig=allSig aIsSig allA} 
+            (MkComb $ \x => xin) {shape=allA}
+  -> (runComb (reduce {as=as} {prf2=allA} f) $ xin) 
+  = ((runComb $ app (reduce {prf2=allA'} f) xin') ())
 
-reduceEq: {a:_} -> {as:_} -> {auto aIsSig: Sig a} -> (allA: All (OfType a) as)
+extFst : {p: a -> Type} -> {t1 : (x: a ** p x)} -> {t2 : (y: a ** p y)}
+  -> t1 = t2 -> t1.fst = t2.fst
+extFst Refl = Refl
+
+extSnd : {p: a -> Type} -> {t1 : (x: a ** p x)} -> {t2 : (y: a ** p y)}
+  -> (prf : t1 = t2) -> (snd t1) = (rewrite extFst prf in snd t2)
+extSnd Refl = Refl
+
+balance_lemma_base: {a:_} -> {as:_} -> {auto aIsSig: Sig a} -> (allA: All (OfType a) as)
   -> (f: Eval.Combinational (a, a) a) -> (xin: as)
   -> (assoc_f: assoc f)
-  -> (runComb (reduce {as=as} {prf1=aIsSig} f) $ xin) = (runComb (balancedReduce {max_iter=1} f) $ xin)
-reduceEq (AllU x) f xin assoc_f = Refl
-reduceEq {a} (AllP {ty1=ty1} {ty2=ty2} all1 all2) f xin assoc_f with (allBalanced (AllP all1 all2))
-  reduceEq {a} (AllP {ty1=ty1} {ty2=ty2} all1 all2) f (xin1, xin2) assoc_f 
-      | False  with (getShape (AllP all1 all2))
-    reduceEq (AllP {ty1=ty1} {ty2=ty2} (AllU x) (AllU y)) f (xin1, xin2) assoc_f 
-      | False  | Balance = Refl
-    reduceEq {a} (AllP {ty1=a} {ty2=(ty21, ty22)} (AllU Refl) (AllP y z)) f (xin1, xin2) assoc_f 
-      | False  | Balance with (balance {comb=Eval.Combinational} {max_iter=1} (MkComb $ \x => xin2) {shape=AllP {ty1=ty21} {ty2=ty22} y z}) proof p
-      reduceEq {a} (AllP {ty1=a} {ty2=(ty21, ty22)} (AllU Refl) (AllP y z)) f (xin1, xin2) assoc_f | False  | Balance | (rty ** (right', (allR, sigR))) = 
-        let prf = balance_lemma (AllP {ty1=ty21} {ty2=ty22} y z) f xin2 assoc_f (sym $ p)
-        in rewrite prf in Refl
-    reduceEq (AllP {ty1=(ty11, ty12)} {ty2=ty2} (AllP x y) (AllU z)) f (xin1, xin2) assoc_f 
-      | False  | Balance with (balance {comb=Eval.Combinational} {max_iter=1} (MkComb $ \x => xin1) {shape=AllP {ty1=ty11} {ty2=ty12} x y}) proof p
-      reduceEq (AllP {ty1=(ty11, ty12)} {ty2=ty2} (AllP x y) (AllU z)) f (xin1, xin2) assoc_f | False  | Balance | (lty ** (left', (allL, sigL))) = 
-        let prf = balance_lemma (AllP {ty1=ty11} {ty2=ty12} x y) f xin1 assoc_f (sym $ p)
-        in rewrite prf in Refl
-    reduceEq (AllP {ty1=(ty11, ty12)} {ty2=(ty21, ty22)} (AllP x y) (AllP z w)) f (xin1, xin2) assoc_f 
-      | False  | Balance with (balance {comb=Eval.Combinational} {max_iter=1} (MkComb $ \x => xin1) {shape=AllP {ty1=ty11} {ty2=ty12} x y}) proof p1
-      reduceEq (AllP {ty1=(ty11, ty12)} {ty2=(ty21, ty22)} (AllP x y) (AllP z w)) f (xin1, xin2) assoc_f 
-        | False  | Balance | (lty ** (left', (allL, sigL))) with ((balance {comb=Eval.Combinational} {max_iter=1} {asSig= allSig aIsSig $ AllP {ty1=ty21} {ty2=ty22} z w} (MkComb $ \x => xin2) {shape=AllP {ty1=ty21} {ty2=ty22} z w})) proof p2
-        reduceEq (AllP {ty1=(ty11, ty12)} {ty2=(ty21, ty22)} (AllP x y) (AllP z w)) f (xin1, xin2) assoc_f | False  | Balance | (lty ** (left', (allL, sigL))) | (rty ** (right', (allR, sigR))) = 
-          let prf1 = balance_lemma (AllP {ty1=ty11} {ty2=ty12} x y) f xin1 assoc_f (sym $ p1)
-              prf2 = balance_lemma (AllP {ty1=ty21} {ty2=ty22} z w) f xin2 assoc_f (sym $ p2)
-          in rewrite prf1 in rewrite prf2 in Refl
-    reduceEq {a} (AllP {ty1=a} {ty2=ty2} (AllU Refl) all2) f (xin1, xin2) assoc_f | False  | LL = Refl
-    reduceEq (AllP {ty1=(ty11, ty12)} {ty2=ty2} (AllP x y) all2) f (xin1, xin2) assoc_f | False  | LL with %syntactic (xin1)
-      reduceEq (AllP {ty1=(ty11, ty12)} {ty2=ty2} (AllP x y) all2) f (xin1, xin2) assoc_f | False  | LL | (xin11, xin12) 
-        = let assoc_prf = assoc_f (runComb (reduce f) $ xin11) 
-                                  (runComb (reduce f) $ xin12) 
+  -> {as': _} -> {xin': _} -> {allA': All (OfType a) as'} -> {sigAs': Sig as'}
+  -> (as' ** (xin', allA', sigAs')) 
+  = balance {ty=a} {comb=Eval.Combinational} {max_iter=0} {asSig=allSig aIsSig allA} 
+            (MkComb $ \x => xin) {shape=allA}
+  -> (runComb (reduce {as=as} {prf2=allA} f) $ xin) = ((runComb $ app (reduce {prf2=allA'} f) xin') ())
+balance_lemma_base {as = as} (AllU x) f xin assoc_f Refl = Refl
+balance_lemma_base {as = (ty1, ty2)} (AllP x y) f xin assoc_f prf_unpack 
+  =   let prf_xin'  = cong fst $ extSnd prf_unpack
+          prf_allA' = cong (fst . snd) $ extSnd prf_unpack
+      in rewrite prf_allA' in 
+         rewrite prf_xin'  in Refl
+
+balance_lemma_succ : (k: Nat) -> (prev: balance_lemma_ty k) 
+  -> balance_lemma_ty (S k)
+balance_lemma_succ {as = as} k prev (AllU x) f xin assoc_f Refl = Refl
+balance_lemma_succ {aIsSig} k prev {a} {as=(ty1, ty2)} (AllP {ty1=ty1} {ty2=ty2} x y) f xin assoc_f unpack_prf with (allBalanced (AllP {ty1=ty1} {ty2=ty2} x y))
+  balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=(ty1, ty2)} (AllP {ty1=ty1} {ty2=ty2} x y) f xin1 assoc_f unpack_prf | False with (getShape (AllP {ty1=ty1} {ty2=ty2} x y))
+    balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=(ty1, ty2)} (AllP {ty1=ty1} {ty2=ty2} x y) f xin assoc_f unpack_prf | False | Balance with (balance {comb=Eval.Combinational} {asSig= allSig aIsSig x} {max_iter= S k} (MkComb $ \x => fst xin) {shape=x}) proof prf_left
+      balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=(ty1, ty2)} (AllP {ty1=ty1} {ty2=ty2} x y) f xin assoc_f unpack_prf | False | Balance | (lty ** (left', (allL, sigL))) with (balance {comb=Eval.Combinational} {asSig= allSig aIsSig y} {max_iter= S k} (MkComb $ \x => snd xin) {shape=y}) proof prf_right
+        balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=(ty1, ty2)} (AllP {ty1=ty1} {ty2=ty2} x y) f xin assoc_f unpack_prf | False | Balance | (lty ** (left', (allL, sigL))) | (rty ** (right', (allR, sigR))) = 
+          let prf_eq_l = balance_lemma_succ k prev x f (fst xin) assoc_f (sym prf_left)
+              prf_eq_r = balance_lemma_succ k prev y f (snd xin) assoc_f (sym prf_right)
+              prf_xin' = cong fst $ extSnd unpack_prf
+              prf_shape = cong (fst . snd) $ extSnd unpack_prf
+          in rewrite prf_xin' in 
+             rewrite prf_shape in 
+             rewrite prf_eq_l in 
+             rewrite prf_eq_r in Refl
+    balance_lemma_succ {aIsSig = aIsSig} k prev {a = ty1} {as=(ty1, ty2)} (AllP {ty1=ty1} {ty2=ty2} (AllU Refl) y) f (xin1, xin2) assoc_f unpack_prf | False | LL = 
+      prev (AllP {ty1=ty1} {ty2=ty2} (AllU Refl) y) f (xin1, xin2) assoc_f unpack_prf
+    balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=((ty11, ty12), ty2)} (AllP {ty1=(ty11, ty12)} {ty2=ty2} (AllP x y) z) f ((xin11, xin12), xin2) assoc_f unpack_prf | False | LL = 
+      let prf = sym $ prev (AllP {ty1=ty11} {ty2=(ty12, ty2)} x (AllP y z)) f (xin11, (xin12, xin2)) assoc_f unpack_prf
+          prf_assoc = assoc_f (runComb (reduce f) $ xin11) 
+                              (runComb (reduce f) $ xin12) 
+                              (runComb (reduce f) $ xin2)
+      in rewrite prf in prf_assoc
+    balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=(ty1, ty2)} (AllP {ty1=ty1} {ty2=ty2} x y) f xin assoc_f unpack_prf | False | RR = ?sym_ll
+    balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=(ty1, ty2)} (AllP {ty1=ty1} {ty2=ty2} x y) f (xin1, xin2) assoc_f unpack_prf | False | (LR _ _ _) with (x)
+      balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=(a, ty2)} (AllP {ty1=a} {ty2=ty2} x y) f (xin1, xin2) assoc_f unpack_prf | False | (LR _ _ _) | (AllU Refl) = 
+        prev (AllP {ty1=a} {ty2=ty2} (AllU Refl) y) f (xin1, xin2) assoc_f unpack_prf
+      balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=((ty11, ty12), ty2)} (AllP {ty1=(ty11, ty12)} {ty2=ty2} _ z) f (xin1, xin2) assoc_f unpack_prf | False | (LR _ _ _) | (AllP x y) with (y)
+        balance_lemma_succ {aIsSig = aIsSig} k prev {a = ty12} {as=((ty11, ty12), ty2)} (AllP {ty1=(ty11, ty12)} {ty2=ty2} _ z) f ((xin11, xin12), xin2) assoc_f unpack_prf | False | (LR _ _ _) | (AllP x _) | (AllU Refl) = 
+          let prf_prev = sym $ prev (AllP {ty1=ty11} {ty2=(ty12, ty2)} x (AllP (AllU Refl) z)) f (xin11, xin12, xin2) assoc_f unpack_prf
+              prf_assoc = assoc_f (runComb (reduce f) $ xin11) 
+                                  (xin12) 
                                   (runComb (reduce f) $ xin2)
-          in rewrite assoc_prf in Refl
-    reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f (xin1, xin2) assoc_f | False  | RR = ?case_rr
-    reduceEq {a} (AllP {ty1=a} {ty2=ty2} (AllU Refl) all2) f (xin1, xin2) assoc_f | False  | (LR _ _ _) = Refl
-    reduceEq {a} (AllP {ty1=(ty11, ty12)} {ty2=ty2} (AllP x y) all2) f (xin1, xin2) assoc_f | False  | (LR _ _ _) with %syntactic (xin1)
-      reduceEq {a} (AllP {ty1=(ty11, ty12)} {ty2=a} (AllP x y) (AllU Refl)) f (xin1, xin2) assoc_f 
-          | False  | (LR _ _ _) | (xin11, xin12) with %syntactic (y)
-        reduceEq {a} (AllP {ty1=(ty11, a)} {ty2=a} (AllP x y) (AllU Refl)) f (xin1, xin2) assoc_f 
-          | False  | (LR _ _ _) | (xin11, xin12) | (AllU Refl) = assoc_f (runComb (reduce f) $ xin11) xin12 xin2
-        reduceEq {a} (AllP {ty1=(ty11, (ty121, ty122))} {ty2=a} (AllP x y) (AllU Refl)) f (xin1, xin2) assoc_f 
-          | False  | (LR _ _ _) | (xin11, xin12) | (AllP z w) = 
-            let assoc_prf1 = assoc_f (runComb (reduce f) $ xin11) 
-                                     ((runComb f) ((runComb (reduce f) $ fst xin12), 
-                                                   (runComb (reduce f) $ snd xin12))) 
-                                     xin2
-                assoc_prf2 = assoc_f (runComb (reduce f) $ fst xin12) 
-                                     (runComb (reduce f) $ snd xin12)
-                                     xin2
-                assoc_prf3 = sym $ assoc_f (runComb (reduce f) $ xin11) 
-                                           (runComb (reduce f) $ fst xin12) 
-                                           (runComb f $ ((runComb (reduce f) $ snd xin12), xin2))
-            in rewrite assoc_prf1 in 
-               rewrite assoc_prf2 in 
-               assoc_prf3
-      reduceEq (AllP {ty1=(ty11, ty12)} {ty2=(ty1, ty2)} (AllP x1 y1) (AllP x2 y2)) f (xin1, xin2) assoc_f 
-          | False  | (LR _ _ _) | (xin11, xin12) with %syntactic (y1)
-        reduceEq (AllP {ty1=(ty11, a)} {ty2=(ty1, ty2)} (AllP x1 y1) (AllP x2 y2)) f (xin1, xin2) assoc_f 
-          | False  | (LR _ _ _) | (xin11, xin12) | (AllU Refl) = 
-            assoc_f (runComb (reduce f) $ xin11) xin12 
-                    (runComb f $ (runComb (reduce f) $ fst xin2, 
-                                  runComb (reduce f) $ snd xin2))
-        reduceEq (AllP {ty1=(ty11, ty121, ty122)} {ty2=(ty1, ty2)} (AllP x1 y1) (AllP x2 y2)) f (xin1, xin2) assoc_f 
-          | False  | (LR _ _ _) | (xin11, xin12) | (AllP z w) = 
-            let assoc_prf1 = sym $ assoc_f (runComb (reduce f) $ xin11) 
-                                           (runComb (reduce f) $ fst xin12) 
-                                           (runComb (reduce f) $ snd xin12)
-                assoc_prf2 = assoc_f (runComb f $ (runComb (reduce f) $ xin11, 
-                                                   runComb (reduce f) $ fst xin12))
-                                     (runComb (reduce f) $ snd xin12)
-                                     (runComb f $ (runComb (reduce f) $ fst xin2, 
-                                                   runComb (reduce f) $ snd xin2))
-            in rewrite assoc_prf1 in assoc_prf2
-    reduceEq (AllP {ty1=ty1} {ty2=ty2} all1 all2) f (xin1, xin2) assoc_f | False  | (RL left rightL rightR) = ?case_rl
-  reduceEq (AllP all1 all2) f xin assoc_f | True = Refl
+          in rewrite prf_prev in prf_assoc
+        balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=((ty11, (ty1, ty2)), ty2)} (AllP {ty1=(ty11, (ty121, ty122))} {ty2=ty2} _ z) f ((xin11, (xin121, xin122)), xin2) assoc_f unpack_prf | False | (LR _ _ _) | (AllP x _) | (AllP y w) = 
+          let prf_prev = sym $ prev (AllP {ty1=(ty11, ty121)} {ty2=(ty122, ty2)} (AllP x y) (AllP w z)) f ((xin11, xin121), (xin122, xin2)) assoc_f unpack_prf
+              prf_assoc1 = assoc_f (runComb (reduce f) $ xin11) 
+                                   ((runComb f) ((runComb (reduce f) $ xin121), 
+                                                 (runComb (reduce f) $ xin122))) 
+                                   (runComb (reduce f) $ xin2)
+              prf_assoc2 = assoc_f (runComb (reduce f) $ xin121) 
+                                   (runComb (reduce f) $ xin122)
+                                   (runComb (reduce f) $ xin2)
+              prf_assoc3 = sym $ assoc_f (runComb (reduce f) $ xin11) 
+                                           (runComb (reduce f) $ xin121) 
+                                           (runComb f $ ((runComb (reduce f) $ xin122), 
+                                                         (runComb (reduce f) $ xin2)))
+          in rewrite prf_prev in 
+             rewrite prf_assoc1 in 
+             rewrite prf_assoc2 in prf_assoc3
+    balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=(ty1, ty2)} (AllP {ty1=ty1} {ty2=ty2} x y) f xin assoc_f unpack_prf | False | (RL _ _ _) = ?sym_lr
+  balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=(ty1, ty2)} (AllP {ty1=ty1} {ty2=ty2} x y) f (xin1, xin2) assoc_f unpack_prf | True 
+    = let prf1 = cong fst $ extSnd unpack_prf in 
+      let prf2 = cong (fst . snd) $ extSnd unpack_prf in 
+      rewrite prf2 in rewrite prf1 in Refl
+
+balance_lemma: (k: Nat) -> {a:_} -> {as:_} -> {auto aIsSig: Sig a} 
+  -> (allA: All (OfType a) as) 
+  -> (f: Eval.Combinational (a, a) a) -> (xin: as)
+  -> (assoc_f: assoc f)
+  -> {as': _} -> {xin': _} -> {allA': All (OfType a) as'} -> {sigAs': Sig as'}
+  -> (as' ** (xin', allA', sigAs')) 
+  = balance {ty=a} {comb=Eval.Combinational} {max_iter=k} {asSig=allSig aIsSig allA} 
+            (MkComb $ \x => xin) {shape=allA}
+  -> (runComb (reduce {as=as} {prf2=allA} f) $ xin) = ((runComb $ app (reduce {prf2=allA'} f) xin') ())
+balance_lemma 0 allA f xin assoc_f prf_unpack = balance_lemma_base allA f xin assoc_f prf_unpack
+balance_lemma (S k) allA f xin assoc_f prf_unpack 
+  = balance_lemma_succ k (balance_lemma k) allA f xin assoc_f prf_unpack
+
+reduce_eq: {a:_} -> {as:_} -> {auto aIsSig: Sig a} -> (k: Nat)
+  -> (allA: All (OfType a) as)
+  -> (f: Eval.Combinational (a, a) a) 
+  -> (xin: as)
+  -> (assoc_f: assoc f)
+  -> (runComb (reduce {as=as} {prf1=aIsSig} f) $ xin) 
+   = (runComb (balancedReduce {max_iter=k} f) $ xin)
+reduce_eq k allA f xin assoc_f with (balance {max_iter=k} {shape=allA} {comb=Eval.Combinational} (MkComb $ \x => xin)) proof prf_unpack
+  reduce_eq k allA f xin assoc_f | (as' ** (xin', allA', sigAs')) 
+    = balance_lemma k allA f xin assoc_f (sym $ prf_unpack)
 
 %hint
 lteSucc: (n:Nat) -> LTE n (S n)
