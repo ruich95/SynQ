@@ -258,12 +258,16 @@ lteSucc: (n:Nat) -> LTE n (S n)
 lteSucc 0 = LTEZero
 lteSucc (S k) = LTESucc (lteSucc k)
 
-tAll: All (OfType $ BitVec 8) (BitVec 8, ((BitVec 8, (BitVec 8, (BitVec 8, BitVec 8))) , BitVec 8))
-tAll = AllP (AllU Refl) 
-            (AllP (AllP (AllU Refl) 
-                        (AllP (AllU Refl) (AllP (AllU Refl) 
-                                                (AllU Refl)))) 
-                  (AllU Refl))
+shape: Type
+shape = (((BitVec 32, BitVec 32), BitVec 32), ((BitVec 32, ((BitVec 32, BitVec 32), BitVec 32)), BitVec 32))
+
+allShape: All (OfType $ BitVec 32) BalanceTree.shape
+allShape = AllP (AllP (AllP (AllU Refl) (AllU Refl)) 
+                      (AllU Refl)) 
+                (AllP (AllP (AllU Refl) 
+                            (AllP (AllP (AllU Refl) (AllU Refl)) 
+                                  (AllU Refl))) 
+                      (AllU Refl))
 
 adder: {comb:_} -> {n:_} 
   -> (Comb comb, Primitive comb)
@@ -271,6 +275,7 @@ adder: {comb:_} -> {n:_}
 adder = lam $ \x => lower' n (add (proj1 x) (proj2 x))
 
 balancedSum: {comb: _} -> (Comb comb, Primitive comb)
-  => comb (BitVec 8, ((BitVec 8, (BitVec 8, (BitVec 8, BitVec 8))) , BitVec 8)) 
-          (BitVec 8)
-balancedSum = balancedReduce adder {allA=tAll}
+  => (step:Nat) 
+  -> comb BalanceTree.shape
+          (BitVec 32)
+balancedSum step = balancedReduce {max_iter=step} adder {allA=allShape}

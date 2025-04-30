@@ -73,8 +73,7 @@ reduce: {comb:_} -> (Comb comb)
      -> {auto prf2: All (OfType a) as}
      -> (f: comb (a, a) a)
      -> comb as a
-reduce {prf2 = (AllU p)} f = 
-  rewrite sym $ p in lam id
+reduce {prf2 = (AllU Refl)} f = lam id
 reduce {prf2 = (AllP p1 p2)} f = f << (reduce f) <> (reduce f)
 
 repeat: {comb:_} -> (Comb comb)
