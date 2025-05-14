@@ -7,6 +7,8 @@ import Sym.Seq.SeqPrimitive
 import Data.Signal
 import Data.State
 
+%hide Prelude.(>>=)
+
 public export
 applyFst: {comb: _} -> {seq: _} -> (Seq comb seq)
        => {auto sIsState: St s} -> {auto aIsSig: Sig a}
@@ -29,6 +31,17 @@ applySnd fs =
     =<< fs 
     =<< (pure $ proj2 x)
 
+-- so that we can use do-notation
+public export
+(>>=): {comb:_} -> {seq:_}
+  -> (Seq comb seq)
+  => {auto sIsState: St s} 
+  -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
+  -> (1 _: seq s () a)
+  -> (1 _: comb () a -> seq s () b) 
+  -> seq s () b
+(>>=) x f = (abst f) =<< x
+
 public export
 scan: {comb: _} -> {seq: _} -> (Seq comb seq)
   => (1 reg: Reg comb seq) 
@@ -36,8 +49,10 @@ scan: {comb: _} -> {seq: _} -> (Seq comb seq)
   -> {auto bIsSig: Sig b} -> {auto cIsSig: Sig c}
   -> {auto similar: SameShape c s}    
   -> (f: comb (a, c) (b, c)) -> seq s a b
-scan (MkReg get set) f = 
-  abst $ \x => (pure $ lam proj1) 
-           =<< (applySnd $ abst set) 
-           =<< pure (lam $ \y => app f $ prod x y)
-           =<< get
+scan (MkReg get set) f 
+  = abst $ \xin => do cur_st  <- get {aIsSig=cIsSig}
+                      res     <- pure $ app f (prod xin cur_st)
+                      nxt_st  <- pure $ proj2 res
+                      nxt_o   <- pure $ proj1 res
+                      _       <- set nxt_st
+                      pure $ nxt_o

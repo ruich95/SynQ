@@ -2,6 +2,7 @@ module Examples.BalanceTree
 
 import Data.SQData
 import Sym.Comb
+import Sym.Seq
 import Impl.HDL
 import Impl.Eval
 
@@ -107,6 +108,7 @@ balance {max_iter = (S k)} {asSig=P lSig rSig} tr
                        (ty' ** (tr', all', sig')) = rotateL (prod left right') (AllP shapeL allR)
                    in balance {max_iter=k} tr' {shape=all'}
 
+export
 balancedReduce: {a:_} -> {default 20 max_iter: Nat} 
   -> {comb:_} -> (Comb comb)
   => {auto aIsSig: Sig a}
@@ -196,7 +198,13 @@ balance_lemma_succ {aIsSig} k prev {a} {as=(ty1, ty2)} (AllP {ty1=ty1} {ty2=ty2}
                               (runComb (reduce f) $ xin12) 
                               (runComb (reduce f) $ xin2)
       in rewrite prf in prf_assoc
-    balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=(ty1, ty2)} (AllP {ty1=ty1} {ty2=ty2} x y) f xin assoc_f unpack_prf | False | RR = ?sym_ll
+    balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=(ty1, a)} (AllP {ty1=ty1} {ty2=a} x (AllU Refl)) f xin assoc_f unpack_prf | False | RR = prev (AllP {ty1=ty1} {ty2=a} x (AllU Refl)) f xin assoc_f unpack_prf
+    balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=(ty1, (ty21, ty22))} (AllP {ty1=ty1} {ty2=(ty21, ty22)} x (AllP y z)) f (xin1, xin21, xin22) assoc_f unpack_prf | False | RR = 
+      let prf = sym $ prev (AllP  {ty1=(ty1, ty21)} {ty2=ty22} (AllP x y) z) f ((xin1, xin21), xin22) assoc_f unpack_prf
+          prf_assoc = sym $ assoc_f (runComb (reduce f) $ xin1) 
+                                    (runComb (reduce f) $ xin21) 
+                                    (runComb (reduce f) $ xin22)
+      in rewrite prf in prf_assoc
     balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=(ty1, ty2)} (AllP {ty1=ty1} {ty2=ty2} x y) f (xin1, xin2) assoc_f unpack_prf | False | (LR _ _ _) with (x)
       balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=(a, ty2)} (AllP {ty1=a} {ty2=ty2} x y) f (xin1, xin2) assoc_f unpack_prf | False | (LR _ _ _) | (AllU Refl) = 
         prev (AllP {ty1=a} {ty2=ty2} (AllU Refl) y) f (xin1, xin2) assoc_f unpack_prf
@@ -223,7 +231,7 @@ balance_lemma_succ {aIsSig} k prev {a} {as=(ty1, ty2)} (AllP {ty1=ty1} {ty2=ty2}
           in rewrite prf_prev in 
              rewrite prf_assoc1 in 
              rewrite prf_assoc2 in prf_assoc3
-    balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=(ty1, ty2)} (AllP {ty1=ty1} {ty2=ty2} x y) f xin assoc_f unpack_prf | False | (RL _ _ _) = ?sym_lr
+    balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=(ty1, ty2)} (AllP {ty1=ty1} {ty2=ty2} x y) f xin assoc_f unpack_prf | False | (RL _ _ _) = ?sym_to_lr
   balance_lemma_succ {aIsSig = aIsSig} k prev {a = a} {as=(ty1, ty2)} (AllP {ty1=ty1} {ty2=ty2} x y) f (xin1, xin2) assoc_f unpack_prf | True 
     = let prf1 = cong fst $ extSnd unpack_prf in 
       let prf2 = cong (fst . snd) $ extSnd unpack_prf in 
@@ -253,29 +261,3 @@ reduce_eq k allA f xin assoc_f with (balance {max_iter=k} {shape=allA} {comb=Eva
   reduce_eq k allA f xin assoc_f | (as' ** (xin', allA', sigAs')) 
     = balance_lemma k allA f xin assoc_f (sym $ prf_unpack)
 
-%hint
-lteSucc: (n:Nat) -> LTE n (S n)
-lteSucc 0 = LTEZero
-lteSucc (S k) = LTESucc (lteSucc k)
-
-shape: Type
-shape = (((BitVec 32, BitVec 32), BitVec 32), ((BitVec 32, ((BitVec 32, BitVec 32), BitVec 32)), BitVec 32))
-
-allShape: All (OfType $ BitVec 32) BalanceTree.shape
-allShape = AllP (AllP (AllP (AllU Refl) (AllU Refl)) 
-                      (AllU Refl)) 
-                (AllP (AllP (AllU Refl) 
-                            (AllP (AllP (AllU Refl) (AllU Refl)) 
-                                  (AllU Refl))) 
-                      (AllU Refl))
-
-adder: {comb:_} -> {n:_} 
-  -> (Comb comb, Primitive comb)
-  => comb (BitVec n, BitVec n) (BitVec n)
-adder = lam $ \x => lower' n (add (proj1 x) (proj2 x))
-
-balancedSum: {comb: _} -> (Comb comb, Primitive comb)
-  => (step:Nat) 
-  -> comb BalanceTree.shape
-          (BitVec 32)
-balancedSum step = balancedReduce {max_iter=step} adder {allA=allShape}
