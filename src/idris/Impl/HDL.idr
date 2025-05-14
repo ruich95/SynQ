@@ -18,6 +18,7 @@ import System.File
 genCNetList: Combinational a b -> FlattenCombNL
 genCNetList x = flatCombNL $ snd $ runState 0 $ genComb x
 
+export
 genNetList: (1 _: Sequential s a b) -> !* FlattenNetList
 genNetList seq = 
   let (LST2 runSt) = genSeq' seq 

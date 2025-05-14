@@ -8,7 +8,11 @@ import Control.Monad.State
 public export
 data LState2: Type -> Type -> Type where
   LST2: (1 _: s -> LC a s) -> LState2 s a
- 
+
+export
+run: LState2 s a -@ (s -> LC a s)
+run (LST2 f) = f
+
 public export 
 fromST: State s a -> LState2 s (!* a)
 fromST (ST runStateT') 
