@@ -64,9 +64,10 @@ dlyio': {comb: _} -> {seq: _}
   -> (f: comb a b)
   -> (seq (LPair si so) a b)
 dlyio' (MkReg get set) f 
-  = abst $ \xin => (abst $ \x => (pure $ (proj2 x)) 
-                             =<< ((abst set) =<< (pure $ prod xin (app f (proj1 x))))) 
-               =<< (get {aIsSig = P aIsSig bIsSig})                      
+  = abst $ \xin => do x <- (get {aIsSig = P aIsSig bIsSig})
+                      nxt_st <- Seq.pure $ (prod xin (app f (proj1 x)))
+                      _ <- (set nxt_st)
+                      pure $ (proj2 x)
 
 btree: {comb: _} -> {seq: _}
   -> (Seq comb seq, Primitive comb)
