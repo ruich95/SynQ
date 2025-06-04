@@ -22,5 +22,5 @@ isIncr: (Seq comb seq, Primitive comb)
 isIncr (MkReg get set) = abst $ \xin =>
   do pre <- get
      _   <- set xin
-     pure $ (ltu pre xin)
+     pure $ ltu pre xin
 ```
