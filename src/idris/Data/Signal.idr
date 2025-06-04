@@ -7,7 +7,7 @@ data Sig: Type -> Type where
   U:Sig Unit
   P: Sig a -> Sig b -> Sig (a, b)
   BV: {n:_} -> Sig $ BitVec n
-  
+      
 --public export
 --fromSig: Sig a -> a
 --fromSig (U x)   = x

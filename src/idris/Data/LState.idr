@@ -5,7 +5,7 @@ import public Data.LC
 
 import System.File
 
-infixr 9 <<<
+private infixr 9 <<<
 
 public export
 data LState: Type -> Type -> Type where

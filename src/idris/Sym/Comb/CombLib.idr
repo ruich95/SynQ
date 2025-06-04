@@ -7,6 +7,8 @@ import Data.Nat
 import Data.BitVec
 import Data.Signal
 
+%hide Prelude.Ops.infixr.(<|)
+
 export
 infixl 9 <|
 

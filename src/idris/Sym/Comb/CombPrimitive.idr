@@ -5,7 +5,7 @@ import Data.BitVec
 import Data.Nat
 
 public export
-interface Primitive (comb: Type -> Type -> Type) where
+interface Primitive (0 comb: Type -> Type -> Type) where
   const: {n: Nat} -> BitVec n -> comb () (BitVec n)
   
   add: {n: Nat} -> comb () (BitVec n) -> comb () (BitVec n)
