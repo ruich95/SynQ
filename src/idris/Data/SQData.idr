@@ -9,3 +9,7 @@ import public Data.Signal
 import public Data.State
 import public Data.LState
 -- import public Data.LState2
+
+public export
+UInt8: Type
+UInt8 = BitVec 8

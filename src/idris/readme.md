@@ -10,9 +10,6 @@ import SynQ
 %hide Prelude.pure
 %hide Data.Linear.Interface.seq
 %hide Data.LState.(>>=)
-
-UInt8: Type
-UInt8 = BitVec 8
 -->
 
 ```idris
@@ -23,4 +20,10 @@ isIncr (MkReg get set) = abst $ \xin =>
   do pre <- get
      _   <- set xin
      pure $ ltu pre xin
+     
+isIncrMealy: (st: !* UInt8) -> List UInt8 
+  -> (!* UInt8, List $ BitVec 1)
+isIncrMealy = runMealy (isIncr reg)
+
+
 ```

@@ -2,8 +2,9 @@ module Sym.Seq.SeqPrimitive
 
 import Data.Signal
 import Data.State
-
 import Sym.Comb
+
+%hide Data.Linear.Interface.seq
 
 public export
 interface Comb comb 

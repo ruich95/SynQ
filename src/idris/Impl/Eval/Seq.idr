@@ -20,5 +20,5 @@ Seq Combinational Sequential where
   
   pure (MkComb f) = MkSeq $ \x => pure $ f x
   
-  (<<<) (MkSeq g) (MkSeq f) = MkSeq (g <<< f)
+  (<<<) (MkSeq g) (MkSeq f) = MkSeq (LState.(<<<) g f)
   

@@ -5,7 +5,7 @@ import public Data.LC
 
 import System.File
 
-private infixr 9 <<<
+public export infixr 9 <<<
 
 public export
 data LState: Type -> Type -> Type where
@@ -116,5 +116,14 @@ reactMealy parse f st =
   do st' <- react parse f st
      reactMealy parse f st'
 
-acc: (Bits64 -> LState (!* Bits64) Bits64)
-acc m = LST $ \(MkBang st) => (MkBang (st+m) # (st+m))
+{-To be used in types/proofs (w/ multiplicity 0) only-}
+
+public export
+getState: LState s a -> s -> s
+getState (LST sf) s with (sf s)
+  getState (LST sf) s | (l # v) = l
+
+public export
+getValue: LState s a -> s -> a
+getValue (LST sf) s with (sf s)
+  getValue (LST sf) s | (l # v) = v
