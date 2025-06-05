@@ -36,7 +36,24 @@ runMealy (MkSeq f) st (x :: xs) =
       ys        = snd (runMealy (MkSeq f) st' xs)
   in (final_st , y::ys)
 
+public export
+runMealyIO: (Sequential s a b) 
+  -> s -> List a -> List b
+runMealyIO sys st [] = []
+runMealyIO (MkSeq f) st (x :: xs) = 
+  let LST sf    = f x 
+      (st' # y) = sf st
+      ys        = (runMealyIO (MkSeq f) st' xs)
+  in y :: ys
+
 export
+runReact: (Show a, Show b, Show s) 
+  => (input: IO a) 
+  -> (sys: Sequential s a b) -> (st: s) 
+  -> IO()
+runReact input (MkSeq f) st = reactMealy input f st
+
+public export
 runMealyLemma: (sys: Eval.Sequential s a b) 
   -> (st: s) -> (xs1: List a) -> (xs2: List a)
   -> (st':s ** 
