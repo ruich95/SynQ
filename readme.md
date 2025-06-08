@@ -9,12 +9,14 @@ SynQ (**Syn**chronous System Design with **Q**uantitative Types) is an embedded 
 
 ## A Crash Course in SynQ
 
+As its name suggests, SynQ is a DSL targeting the design of synchronous systems, which, intuitively, are reactive systems that always produce an event when an event is consumed.
+
 ```idris
 import SynQ
-import Data.String
 ```
 
-<!-- idris
+<!-- Idris
+import Data.String
 import Data.List1
 %hide Prelude.(>>=)
 %hide Prelude.pure
