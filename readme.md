@@ -1,8 +1,5 @@
 # SynQ
-
-SynQ (**Syn**chronous System Design with **Q**uantitative Types) is a EDSL in Idris2.
-
-
+**Syn**chronous System Design with **Q**uantitative Types
 
 ```idris
 import SynQ

@@ -30,7 +30,7 @@ lemma 0 n = LTEZero
 lemma (S k) 0 = lteSelf (S k)
 lemma (S k) (S j) = lteRelax (minus k j) k $ lemma k j
 
-toFin: (m: Nat) -> (n: Nat) -> {auto prf: LTE n $ S m} -> Fin (S m)
+toFin: (m: Nat) -> (n: Nat) -> {auto 0 prf: LTE n $ S m} -> Fin (S m)
 toFin m 0 {prf=LTEZero} = FZ
 toFin 0 (S k) {prf=LTESucc x} = FZ
 toFin (S j) (S k) {prf=LTESucc x} = FS $ toFin j k {prf=x}

@@ -23,7 +23,7 @@ depends = linear
 
 -- name of executable
 -- executable =
--- opts =
+opts = "--profile"
 sourcedir = "./src/idris"
 -- builddir =
 -- outputdir =
