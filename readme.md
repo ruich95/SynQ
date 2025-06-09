@@ -15,25 +15,39 @@ As its name suggests, SynQ is a DSL targeting the design of synchronous systems,
 import SynQ
 ```
 
-<!-- Idris
+<!-- idris
 import Data.String
 import Data.List1
+
 %hide Prelude.(>>=)
 %hide Prelude.pure
 %hide Data.Linear.Interface.seq
 %hide Data.LState.(>>=)
+%hide Data.LState.(<<<)
 %ambiguity_depth 8
 -->
 
+<!-- idris 
+-- so that tye declaration of isIncr comes later
+mutual
+-->
+
 ```idris
-isIncr: (Seq comb seq, Primitive comb)
-  => (1 reg: Reg UInt8 comb seq)
-  -> seq (!* UInt8) UInt8 (BitVec 1)
-isIncr (MkReg get set) = abst $ \xin =>
-  do pre <- get
-     _   <- set xin
-     pure $ ltu pre xin
+
+  isIncr (MkReg get set) = abst $ \xin =>
+    do pre <- get
+       _   <- set xin
+       pure $ ltu pre xin
 ```
+
+```idris
+  isIncr: (Seq comb seq, Primitive comb)
+    => (1 reg: Reg UInt8 comb seq)
+    -> seq (!* UInt8) UInt8 (BitVec 1)
+```
+<!--
+mutual end
+-->
 
 ## Run as a program
 ```idris
@@ -59,7 +73,7 @@ lteSucc: (n:Nat) -> LTE n (S n)
 lteSucc 0 = LTEZero
 lteSucc (S k) = LTESucc (lteSucc k)
 
-minusZero: (n:Nat) -> n = minus n 0
+0 minusZero: (n:Nat) -> n = minus n 0
 minusZero 0 = Refl
 minusZero (S k) = Refl
 
@@ -102,38 +116,23 @@ sineSrc: (Seq comb seq, Primitive comb)
 sineSrc (MkReg get set) = 
   do cur_idx <- get
      o <- pure $ sineSig cur_idx
-     _ <- set (mux21 (ltu cur_idx $ const $ 32)
+     _ <- set (mux21 (ltu cur_idx $ const $ 31)
                      (slice 0 8 $ add cur_idx $ const $ 1)
                      (const $ 0))
      pure o
+     
+sineSigProg: IO ()
+sineSigProg = putStrLn $ show $ runMealy (sineSrc reg) (MkBang 0) 
+              [(), (), (), (), (), (), (), (), (), (), (), (), (), (), ()]
+              
+genSine: IO ()
+genSine = writeVerilog "sine" (sineSrc reg)
 -->
 
 ## Generate HDL
 ```idris
-
-sineSigProg: IO ()
-sineSigProg = putStrLn $ show $ runMealy (sineSrc reg) (MkBang 0) 
-              [(), (), (), (), (), (), (), (), (), (), (), (), (), (), ()]
-
-sample: (Seq comb seq, Reg a comb seq)
-  => {auto aIsSig: Sig a} -> {auto sIsState: St s}
-  -> {auto similar: SameShape a s}
-  -> seq s a a
-sample = abst $ \x => 
-  do o <- get
-     _ <- set x
-     pure o
-
-wrapped: (Seq comb seq, Primitive comb, 
-          Reg (BitVec 1) comb seq)
-  => (1 reg1: Reg UInt8 comb seq)
-  -> (1 reg2: Reg UInt8 comb seq)
-  -> seq (LPair (LPair (!* UInt8) (!* UInt8)) (!* BitVec 1)) 
-         () (BitVec 1)
-wrapped reg1 reg2 = sample <<< (isIncr reg2) <<< (sineSrc reg1)
-
-genHDL: IO ()
-genHDL = writeVerilog "sine" (sineSrc reg)
+genDemo: IO ()
+genDemo = writeVerilog "demo_sys" (isIncr reg)
 ```
 
 ```bash
@@ -187,29 +186,4 @@ isIncrMealyPropN (MkBang st) (st' :: xs) x y p_ltu =
   let (ys ** prf) = isIncrMealyPropN (MkBang st') xs x y p_ltu
   in rewrite prf in (bvLtu st st' :: ys ** Refl)
       
-```
-
-```idris
-test_sys: (Seq comb seq, Primitive comb)
-  => (1 reg: Reg UInt8 comb seq)
-  -> seq (!* UInt8) (BitVec 1) UInt8
-test_sys (MkReg get set) = 
-  abst $ \x => do y <- get
-                  _ <- set (mux21 (ltu y $ const 32)
-                              (slice 0 8 $ add y $ const 1)
-                              (const 0))
-                  pure y
-
-test': (Comb comb, Primitive comb)
-  => comb UInt8 UInt8
-test' = 
-  lam $ \y => (mux21 (ltu y $ const 32)
-                     (slice 0 8 $ add y $ const 1)
-                     (const 0))
-                                                      
-genTest: IO ()
-genTest = writeVerilog "test" (test_sys reg)
-
-genTest': IO ()
-genTest' = writeCombVerilog "test_c" (test')
 ```

@@ -52,8 +52,8 @@ xorDecl = MkModuleDecl
             (SP (NM "xor_comp_out") n UV)
 
 sliceDecl: {n:_} -> (lower: Nat) -> (upper: Nat) 
-      -> {auto prf_upper: LTE upper n}
-      -> {auto prf_lower: LTE lower upper}
+      -> {auto 0 prf_upper: LTE upper n}
+      -> {auto 0 prf_lower: LTE lower upper}
       -> ModuleDecl (BitVec n) (BitVec $ minus upper lower)
 sliceDecl lower upper = 
    MkModuleDecl 

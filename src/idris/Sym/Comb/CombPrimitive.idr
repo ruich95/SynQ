@@ -27,8 +27,8 @@ interface Primitive (0 comb: Type -> Type -> Type) where
     -> comb () (BitVec n)
                           
   slice: {n: Nat} -> (lower: Nat) -> (upper: Nat) 
-      -> {auto prf_upper: LTE upper n}
-      -> {auto prf_lower: LTE lower upper}
+      -> {auto 0 prf_upper: LTE upper n}
+      -> {auto 0 prf_lower: LTE lower upper}
       -> comb () (BitVec n) -> comb () (BitVec $ minus upper lower)
   
   eq: {n: Nat} -> comb () (BitVec n) -> comb () (BitVec n)
