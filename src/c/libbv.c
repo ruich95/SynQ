@@ -36,10 +36,14 @@ uint64_t bv_slice(uint8_t lb, uint8_t ub, \
     
   uint64_t val_res = EMPTY;
   uint8_t i;
+  uint64_t msk_lb = FULL << lb;
+  uint64_t msk_ub = FULL >> (64 - ub);
+  uint64_t msk = msk_lb & msk_ub;
+  val_res = (val & msk) >> lb;
 
-  for(i = lb; i < ub; i++)
-    if(bv_test(i, len, val) == 1)
-      val_res += (1LL << (i-lb));
+  /* for(i = lb; i < ub; i++) */
+  /*   if(bv_test(i, len, val) == 1) */
+  /*     val_res += (1LL << (i-lb)); */
   
   return val_res;
 }

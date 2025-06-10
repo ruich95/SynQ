@@ -55,9 +55,11 @@ natToBits8 k with (k < 64)
   natToBits8 k | False = 64
   natToBits8 k | True 
     = case k of
-        0     => 0
-        (S 0) => 1
-        (S $ S j) => 2 + natToBits8 j
+        0 => 0
+        1 => 1
+        2 => 2
+        3 => 3
+        (S $ S $ S $ S j) => 4 + natToBits8 j
 
 %foreign (lib_bv "bv_eq")
 bv_eq: Bits8 -> Bits64 -> Bits64 -> Bits64

@@ -38,8 +38,7 @@ term2: (BitVec 8, BitVec 8) -> (BitVec 8)
 term2 = runComb fn'
 
 
--- %hint
-lteSucc: (n:Nat) -> LTE n (S n)
+0 lteSucc: (n:Nat) -> LTE n (S n)
 lteSucc 0 = LTEZero
 lteSucc (S k) = LTESucc (lteSucc k)
 
@@ -56,15 +55,33 @@ minusZero (S k) = Refl
 minusSucc 0 = Refl
 minusSucc (S k) = (minusSucc k)
 
-unpack: (Primitive comb)
+take: (Primitive comb)
+  => {n:_} 
+  -> (k: Nat) 
+  -> {0 prf: LTE (S k) n}
+  -> comb () (BitVec n)
+  -> comb () (BitVec 1)
+take 0 {prf} x = slice 0 1 x
+take (S k) {prf} x = 
+  rewrite minusSucc k 
+  in slice {n=n} {prf_lower=lteSucc $ S k} {prf_upper=prf} (S k) (S $ S k) x
+
+ns: (k: Nat) -> (n: Nat) -> {prf: LTE n k} ->  Vect n (m: Nat ** LTE (S m) k)
+ns k 0 {prf} = []
+ns k (S m) {prf} = (m ** prf) :: ns k m {prf = lteSuccLeft prf}
+
+unpack': (Primitive comb)
+  => {n:_} -> comb () (BitVec n)
+  -> Vect k (m: Nat ** LTE (S m) n)
+  -> Vect k (comb () $ BitVec 1)
+unpack' x [] = []
+unpack' x ((i ** prf_i) :: is) = 
+  (take i {prf=prf_i} x) :: (unpack' x is)
+
+unpack: {0 comb:_} -> (Primitive comb)
   => {n:_} -> comb () (BitVec n)
   -> Vect n (comb () $ BitVec 1)
-unpack {n = 0} x = []
-unpack {n = (S k)} x = 
-  let b =  slice {prf_upper=lteRefl} {prf_lower=lteSucc k} k (S k) x 
-      bs = slice {prf_upper=lteSucc k} 0 k x
-  in (rewrite minusSucc k in b) :: unpack (rewrite minusZero k in bs)
-
+unpack x = unpack' x (ns n n {prf=lteRefl})
 
 hds: List1 a -> (n: Nat) -> Maybe $ List1 a
 hds (x ::: xs) 0 = Nothing
@@ -84,6 +101,9 @@ tls (x ::: (y :: xs)) (S (S k)) =
 splitAt: List1 a -> (n: Nat) -> Maybe (List1 a, List a)
 splitAt xs n = pure MkPair <*> hds xs n <*> tls xs n
 
+%hide Prelude.(>>=)
+%hide Prelude.pure
+
 lutGen': (Primitive comb)
      => (idx_width: Nat)
      -> (data_width: Nat)
@@ -97,13 +117,14 @@ lutGen' (S 0) data_width xs (i :: []) =
     (x1 ::: x2 :: xs) => mux21 i (const x2) (const x1)
 lutGen' (S (S k)) data_width xs (i1 :: i2 :: is) = 
   let partLen = (power 2 (S k))
-  in if length xs <= partLen then lutGen' (S k) data_width xs (i2 :: is)
-     else case splitAt xs partLen of
-            Just (hs, []) => lutGen' (S k) data_width xs (i2 :: is)
-            Just (hs, (t::ts)) => 
-              mux21 i1 (lutGen' (S k) data_width (t:::ts) (i2 :: is))
-                       (lutGen' (S k) data_width hs       (i2 :: is))
-            _ => lutGen' (S k) data_width xs (i2 :: is)
+  in -- if length xs <= partLen then lutGen' (S k) data_width xs (i2 :: is)
+     -- else 
+     case splitAt xs partLen of
+       Just (hs, []) => lutGen' (S k) data_width xs (i2 :: is)
+       Just (hs, (t::ts)) => 
+         mux21 i1 (lutGen' (S k) data_width (t:::ts) (i2 :: is))
+                  (lutGen' (S k) data_width hs       (i2 :: is))
+       _ => lutGen' (S k) data_width xs (i2 :: is)
 
 
 lutGen: (Primitive comb)
@@ -115,19 +136,20 @@ lutGen: (Primitive comb)
 lutGen {idx_width} {data_width} xs idx 
   = let idx' = unpack idx 
     in lutGen' idx_width data_width xs idx'
+
   
 sine: List1 UInt8
 sine = (BV 100) 
-   ::: [BV 119, BV 138, BV 155] --, BV 170] -- , 183, 192, 198, 200, 198, 192, 183, 170,
+   ::: [BV 119, BV 138, BV 155, BV 170] -- , 183, 192, 198, 200, 198, 192, 183, 170,
                        -- 155, 138, 119, 100,  80,  61,  44,  29,  16,   7,   1,   0, 1,
                        -- 7,   16,  29,  44,  61,  80]
 
 sineLut: (Comb comb, Primitive comb)
-     => comb (BitVec 2) UInt8
+     => comb (BitVec 3) UInt8
 sineLut = lam $ \idx => lutGen sine idx
 
-t: (BitVec 2) -> UInt8
+t: (BitVec 3) -> UInt8
 t = %runElab (genComb sineLut)
 
-t1: (BitVec 2) -> UInt8
+t1: (BitVec 3) -> UInt8
 t1 = runComb sineLut
