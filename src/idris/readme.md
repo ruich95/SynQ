@@ -182,9 +182,9 @@ lutGen {idx_width} {data_width} xs idx
     in lutGen' idx_width data_width xs idx'
   
 sine: List1 UInt8
-sine = (100) ::: [119, 138, 155, 170, 183, 192, 198, 200, 198, 192, 183, 170,
-                  155, 138, 119, 100,  80,  61,  44,  29,  16,   7,   1,   0, 1,
-                  7,   16,  29,  44,  61,  80]
+sine = 100 ::: [119, 138, 155, 170, 183, 192, 198, 200, 198, 192, 183, 170,
+                155, 138, 119, 100,  80,  61,  44,  29,  16,   7,   1,   0, 
+                  1,   7,  16,  29,  44,  61,  80]
 
 sineSig: (Comb comb, Primitive comb)
      => comb () UInt8 -> comb () UInt8
@@ -202,9 +202,13 @@ sineSrc (MkReg get set) =
      pure o
      
 sineSigProg: IO ()
-sineSigProg = putStrLn $ show $ runMealy (sineSrc reg) (MkBang 0) 
-              [(), (), (), (), (), (), (), (), (), (), () , (), (), (), (), (), (), (), (), ()]
-               -- (), (), (), (), (), (), (), (), (), (), (), ()]
+sineSigProg = putStrLn $ show $ 
+                runMealy (sineSrc reg) (MkBang 0) 
+                  {- sample 32 events -}
+                  [(), (), (), (), (), (), (), (), 
+                   (), (), (), (), (), (), (), (), 
+                   (), (), (), (), (), (), (), (), 
+                   (), (), (), (), (), (), (), ()]
               
 genSine: IO ()
 genSine = writeVerilog "sine" (sineSrc reg)
