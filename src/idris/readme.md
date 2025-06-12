@@ -72,6 +72,8 @@ reactIsIncr = runReact input (isIncr reg) (MkBang $ BV 0)
 
 ```
 
+![img](../../doc/figs/readme_react_python_example.png)
+
 <!-- idris
   
 sine: List1 UInt8
@@ -115,6 +117,8 @@ genDemo = writeVerilog "demo_sys" (isIncr reg)
 ```bash
 λΠ> :exec genHDL
 ```
+
+![img](../../doc/figs/readme_verilog_netlist.png)
 
 ## Unrestricted Register Usage
 
