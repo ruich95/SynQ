@@ -119,6 +119,8 @@ genDemo = writeVerilog "demo_sys" (isIncr reg)
 ```
 
 ![img](../../doc/figs/readme_verilog_netlist.png)
+![img](../../doc/figs/readme_block_design.png)
+![img](../../doc/figs/readme_ila_waveform.png)
 
 ## Unrestricted Register Usage
 
