@@ -101,8 +101,6 @@ tls (x ::: (y :: xs)) (S (S k)) =
 splitAt: List1 a -> (n: Nat) -> Maybe (List1 a, List a)
 splitAt xs n = pure MkPair <*> hds xs n <*> tls xs n
 
-%hide Prelude.(>>=)
-%hide Prelude.pure
 
 lutGen': (Primitive comb)
      => (idx_width: Nat)
@@ -138,18 +136,69 @@ lutGen {idx_width} {data_width} xs idx
     in lutGen' idx_width data_width xs idx'
 
   
+unpack2': (Primitive comb)
+  => {n:_} -> comb () (BitVec n)
+  -> Vect k (m: Nat ** LTE (S m) n) 
+  -> Elab $ Vect k (comb () $ BitVec 1)
+unpack2' x [] = pure []
+unpack2' x ((i ** prf_i) :: is) = 
+  do ys <- (unpack2' x is)
+     pure (take i {prf=prf_i} x :: ys)
+
+unpack2: (Primitive comb)
+  => {n:_} 
+  -> Elab $ comb () (BitVec n) -> Vect n (comb () $ BitVec 1)
+unpack2 = lambda _ $ \x => unpack2' {n=n} {k=n} x (ns n n {prf=lteRefl})
+
+lutGen2': (Primitive comb)
+     => (idx_width: Nat)
+     -> (data_width: Nat)
+     -> (List1 $ BitVec data_width)
+     -> Vect idx_width (comb () $ BitVec 1)
+     -> Elab $ comb () (BitVec data_width)
+lutGen2' 0 data_width xs [] = pure $ const $ head xs
+lutGen2' (S 0) data_width xs (i :: []) = 
+  case xs of 
+    (x  ::: []) => pure $ const x
+    (x1 ::: x2 :: xs) => pure $ mux21 i (const x2) (const x1)
+lutGen2' (S (S k)) data_width xs (i1 :: i2 :: is) = 
+  let partLen = (power 2 (S k))
+  in case splitAt xs partLen of
+       Just (hs, (t::ts)) => do
+         t1 <- lutGen2' (S k) data_width (t:::ts) (i2 :: is)
+         t2 <- lutGen2' (S k) data_width hs       (i2 :: is)
+         pure $ mux21 i1 t1 t2
+       _ => lutGen2' (S k) data_width xs (i2 :: is)
+
+lutGen2: (Comb comb, Primitive comb)
+     => {idx_width: Nat}
+     -> {data_width: Nat}
+     -> (List1 $ BitVec data_width)
+     -> Elab $ comb (BitVec idx_width) (BitVec data_width)
+lutGen2 {idx_width} {data_width} xs
+  = pure lam <*> (lambda _ $ \idx => 
+                    do idx' <- unpack2 <*> pure idx 
+                       lutGen2' idx_width data_width xs idx')
+                  
 sine: List1 UInt8
 sine = (BV 100) 
-   ::: [BV 119, BV 138, BV 155, BV 170] -- , 183, 192, 198, 200, 198, 192, 183, 170,
-                       -- 155, 138, 119, 100,  80,  61,  44,  29,  16,   7,   1,   0, 1,
-                       -- 7,   16,  29,  44,  61,  80]
+   ::: [BV 119, BV 138, BV 155, BV 170, 183, 192, 198, 200, 198, 192, 183, 170,
+           155,    138,    119,    100,  80,  61,  44,  29,  16,   7,   1,   0,  
+             1,      7,     16,     29,  44,  61,  80]
 
-sineLut: (Comb comb, Primitive comb)
-     => comb (BitVec 3) UInt8
-sineLut = lam $ \idx => lutGen sine idx
+-- sineLut: (Comb comb, Primitive comb)
+--      => comb (BitVec 3) UInt8
+-- sineLut = lam $ \idx => lutGen sine idx
 
-t: (BitVec 3) -> UInt8
-t = %runElab (genComb sineLut)
+sineLut: (Primitive comb) => comb () (BitVec 8) -> Vect 8 (comb () $ BitVec 1)
+sineLut = (%runElab unpack2)
 
-t1: (BitVec 3) -> UInt8
-t1 = runComb sineLut
+
+-- t0: (Primitive comb) => Vect 8 (comb () $ BitVec 1)
+-- t0 = %runElab t (const $ BV 4)
+
+-- t: (BitVec 3) -> UInt8
+-- t = %runElab (genComb sineLut)
+
+-- t1: (BitVec 5) -> UInt8
+-- t1 = runComb sineLut
