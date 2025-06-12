@@ -179,7 +179,7 @@ lutGen2 {idx_width} {data_width} xs
   = pure lam <*> (lambda _ $ \idx => 
                     do idx' <- unpack2 <*> pure idx 
                        lutGen2' idx_width data_width xs idx')
-                  
+                                                      
 sine: List1 UInt8
 sine = (BV 100) 
    ::: [BV 119, BV 138, BV 155, BV 170, 183, 192, 198, 200, 198, 192, 183, 170,
@@ -189,9 +189,6 @@ sine = (BV 100)
 -- sineLut: (Comb comb, Primitive comb)
 --      => comb (BitVec 3) UInt8
 -- sineLut = lam $ \idx => lutGen sine idx
-
-sineLut: (Primitive comb) => comb () (BitVec 8) -> Vect 8 (comb () $ BitVec 1)
-sineLut = (%runElab unpack2)
 
 
 -- t0: (Primitive comb) => Vect 8 (comb () $ BitVec 1)
