@@ -10,8 +10,6 @@ import Data.Signal
 import Data.BitVec
 import Sym.Comb.ElabScripts.Unpack
 
-import Impl.Eval
-
 public export
 head: (Comb comb) 
   => {n: Nat} ->  {auto 0 prf: LTE 1 n}
@@ -60,12 +58,14 @@ where
   pack {k = 0} x = proj1 x
   pack {k = (S k)} x = x
 
+public export
 fromVect: (Comb comb, Primitive comb) 
-       => {m:_} -> Vect (S m) (comb () $ BitVec 1)
-       -> Elab $ comb () $ Repeat (S m) (BitVec 1)   
+       => {m:_} -> {auto aIsSig: Sig a}
+       -> Vect (S m) (comb () a)
+       -> Elab $ comb () $ Repeat (S m) a
 fromVect {m=0} (x :: []) = pure x
 fromVect {m=S m} (x :: y :: xs) = 
-  pure (prod {bIsSig = repeatSig (S m) BV} x) <*> (fromVect (y::xs))
+  pure (prod {bIsSig = repeatSig (S m) aIsSig} x) <*> (fromVect (y::xs))
       
 public export
 unpack: (Comb comb, Primitive comb) 

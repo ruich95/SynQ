@@ -17,7 +17,7 @@ import SynQ
 
 <!-- idris
 import Data.String
-import Data.List1
+import Data.Vect
 import Language.Reflection
 
 %hide Prelude.(>>=)
@@ -75,13 +75,15 @@ reactIsIncr = runReact input (isIncr reg) (MkBang $ BV 0)
 ![img](../../doc/figs/readme_react_python_example.png)
 
 <!-- idris
-  
-sine: List1 UInt8
-sine = 100 ::: [119, 138, 155, 170, 183, 192, 198, 200, 198, 192, 183, 170,
-                155, 138, 119, 100,  80,  61,  44,  29,  16,   7,   1,   0, 
-                  1,   7,  16,  29,  44,  61,  80]
+sine: Vect 32 UInt8
+sine = [100, 119, 138, 155, 170, 183, 192, 198, 
+        200, 198, 192, 183, 170, 155, 138, 119, 
+        100,  80,  61,  44,  29,  16,   7,   1,   
+          0,   1,   7,  16,  29,  44,  61,  80]
 
-sineLut: (Primitive comb) => comb () UInt8 -> comb () UInt8
+
+sineLut: (Primitive comb)
+  => comb () UInt8 -> comb () UInt8
 sineLut = %runElab lutGen sine
 
 sineSig: (Seq comb seq, Primitive comb)
@@ -122,9 +124,9 @@ genDemo = writeVerilog "demo_sys" (isIncr reg)
 ![img](../../doc/figs/readme_block_design.png)
 ![img](../../doc/figs/readme_ila_waveform.png)
 
-## Unrestricted Register Usage
+<!-- ## Unrestricted Register Usage -->
 
-```idris
+<!-- idris
 test: (Seq comb seq, Primitive comb, 
        Reg UInt8 comb seq)
   => seq (!* UInt8) UInt8 UInt8
@@ -138,8 +140,7 @@ test = abst $ \x =>
 
 testHDL: IO ()
 testHDL = writeVerilog "seq_assign" $ test {comb = NetList.Combinational}
-
-```
+-->
 
 
 ## Prove Properties
