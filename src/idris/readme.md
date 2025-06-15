@@ -86,11 +86,27 @@ reactIsIncr = runReact input (isIncr reg) (MkBang $ BV 0)
 %hide Prelude.(>>=)
 %hide Prelude.pure
 
-```
+``` 
 
 ![img](../../doc/figs/readme_react_python_example.png)
 
-<!-- idris
+### Generating Verilog HDL
+```idris
+genDemo: IO ()
+genDemo = writeVerilog "demo_sys" (isIncr reg)
+```
+
+```bash
+λΠ> :exec genDemo
+```
+
+![img](../../doc/figs/readme_verilog_netlist.png)
+
+<details>
+ 
+<summary> Generating Sinusoidal Wave </summary>
+
+ ``` idris
 sine: Vect 32 UInt8
 sine = [100, 119, 138, 155, 170, 183, 192, 198, 
         200, 198, 192, 183, 170, 155, 138, 119, 
@@ -124,19 +140,9 @@ sineSigProg = putStrLn $ show $
               
 genSine: IO ()
 genSine = writeVerilog "sine" (sineSig reg)
--->
-
-## Generate HDL
-```idris
-genDemo: IO ()
-genDemo = writeVerilog "demo_sys" (isIncr reg)
 ```
+</details>
 
-```bash
-λΠ> :exec genHDL
-```
-
-![img](../../doc/figs/readme_verilog_netlist.png)
 ![img](../../doc/figs/readme_block_design.png)
 ![img](../../doc/figs/readme_ila_waveform.png)
 
