@@ -52,7 +52,6 @@ mutual
 ### Modelling the System
 
 ```idris
-
   isIncr (MkReg get set) = abst $ \xin =>
     do pre <- get
        _   <- set xin
@@ -68,7 +67,7 @@ mutual
 mutual end
 -->
 
-## Run as a program
+### Run as a program
 ```idris
 %unhide Prelude.(>>=)
 %unhide Prelude.pure
@@ -87,9 +86,10 @@ reactIsIncr = runReact input (isIncr reg) (MkBang $ BV 0)
 %hide Prelude.pure
 
 ``` 
-
-![img](../../doc/figs/readme_react_python_example.png)
-
+<p align="center">
+<img src="../../doc/figs/readme_react_python_example.png" width=500>
+<\p>
+ 
 ### Generating Verilog HDL
 ```idris
 genDemo: IO ()
