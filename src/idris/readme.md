@@ -9,7 +9,21 @@ SynQ (**Syn**chronous System Design with **Q**uantitative Types) is an embedded 
 
 ## A Crash Course in SynQ
 
-As its name suggests, SynQ is a DSL targeting the design of synchronous systems, which, intuitively, are reactive systems that always produce an event when an event is consumed.
+As its name suggests, SynQ is a DSL targeting the design of synchronous systems, which, intuitively, are reactive systems that always have aligned inputs and outputs.
+That is, whenever an event is consumed by a synchronous system, the corresponding event will be produced.
+We demonstrate the basic usage of SynQ here by designing a toy system that *monitors if its input is increasing* in SynQ.
+Specifically, it will be demonstrated here that:
+
+- how the system is modelled in SynQ;
+- how the modelled system can be interpreted and compiled as an Idris2 function, which allows the system to be tested quickly;
+- how the modelled system can be interpreted to synthesizable Verilog HDL code; and
+- how properties of the modelled system (its interpretation indeed) can be specified and proved in Idris2's type system.
+
+*This file itself is a [literate file](https://idris2.readthedocs.io/en/latest/reference/literate.html), meaning that you can load this file into Idris2 and try it yourself.*
+
+### Step 0: Import SynQ
+
+SynQ is an Idris2 library; once it has been installed, you can import it just like importing other libraries.
 
 ```idris
 import SynQ
@@ -31,9 +45,11 @@ import Language.Reflection
 -->
 
 <!-- idris 
--- so that tye declaration of isIncr comes later
+-- so that the type declaration of isIncr comes later
 mutual
 -->
+
+### Modelling the System
 
 ```idris
 
