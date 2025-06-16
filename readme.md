@@ -61,7 +61,7 @@ That is, for each input event, the system will first retrieve the state of the r
 Finally, the result of comparing `pre` and `ltu` will be the output, and the comparison does not change/rely on the state (suggested by `pure`).
 
 ```idris
-  isIncr reg@(MkReg get set) =
+  isIncr (MkReg get set) =
     abst $ \xin =>
       do pre <- get
          _   <- set xin
