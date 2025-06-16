@@ -54,7 +54,7 @@ mutual
 The system is modelled as follows, in which `MkReg get set`, `abst`, and `ltu` are provided by SynQ.
 - `MkReg get set` provides a _register_, or, in the synchronous process network context, a _feedback loop with unit delay_, with two ports locally named `get` (the output port) and `set` (the input port), respectively;
 - `abst $ \xin => ...` specifies that the input of the system is referred to as `xin` in the model; and
-- `pre \` ltu\` xin` asserts whether `pre` is less than `xin` by treating all operands as unsigned values.
+- ``pre `ltu` xin`` asserts whether `pre` is less than `xin` by treating all operands as unsigned values.
 
 ```idris
   isIncr reg@(MkReg get set) =
