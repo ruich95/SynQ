@@ -128,7 +128,7 @@ reactIsIncr = runReact input (isIncr reg) (MkBang $ BV 0)
 
 ``` 
 <p align="center">
-  <img src="../../doc/figs/readme_react_python_example.png" width=500>
+  <img src="./doc/figs/readme_react_python_example.png" width=500>
 </p>
  
 ### Generating Verilog HDL
@@ -142,7 +142,7 @@ genDemo = writeVerilog "demo_sys" (isIncr reg)
 ```
 
 <p align="center">
-<img src="../../doc/figs/readme_verilog_netlist.png" width=500>
+<img src="./doc/figs/readme_verilog_netlist.png" width=500>
 </p>
 
 <details>
@@ -187,11 +187,11 @@ genSine = writeVerilog "sine" (sineSig reg)
 </details>
 
 <p align="center">
-<img src="../../doc/figs/readme_block_design.png" width=1000>
+<img src="./doc/figs/readme_block_design.png" width=1000>
 </p>
 
 <p align="center">
-<img src="../../doc/figs/readme_ila_waveform.png" width=1000>
+<img src="./doc/figs/readme_ila_waveform.png" width=1000>
 </p>
 
 <!-- ## Unrestricted Register Usage -->
