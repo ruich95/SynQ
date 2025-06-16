@@ -81,11 +81,26 @@ The type of the model is given as
     -> seq (!* UInt8) UInt8 (BitVec 1)
 ```
 in which `seq (!* UInt8) UInt8 (BitVec 1)` is the *type* of the system:
-- `seq: Type -> Type -> Type -> Type` is the abstract type variable for modelled *stateful* systems;
-- `(!* UInt8)` is the type of the system's state;
+- `seq: Type -> Type -> Type -> Type` is the abstract type variable for *stateful* synchronous systems, which should be an instance of the interface/type class `Seq`;
+- `!* UInt8` is the type of the system's state;
 - `UInt8` is the type of its input; and
 - `BitVec 1`  is the type of its output.
-
+  
+What is special in SynQ is the parameter type `(1 reg: Reg UInt8 comb seq)`, in which `1` is a multiplicity in [Quantitative Type Theory](https://idris2.readthedocs.io/en/latest/tutorial/multiplicities.html) stating that `reg` should be used **exactly once** in the system.
+The multiplicity `1` is used here so that: 
+- Some Idris2 terms which does not correspond to synchronous systems can be rejected by the type checker, e.g.,
+  ```
+  isIncr' reg@(MkReg get set) =
+    abst $ \xin =>
+      do pre <- get
+         _   <- set pre
+         _   <- set xin
+         {- ^ Assign the register twice, which may result in undefined behaviour
+            | under some interpretation, e.g., the Verilog HDL interpretation.-}
+         pure $ pre `ltu` xin
+  ```
+- All instances (interpretations) of `seq (!* UInt8) UInt8 (BitVec 1)` use exactly one register, and hence have exactly one state of type `!* UInt8`, only.
+  
 <!--
 mutual end
 -->
