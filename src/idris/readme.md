@@ -44,18 +44,22 @@ import Language.Reflection
 %language ElabReflection
 -->
 
+### Modelling the System
+
 <!-- idris 
 -- so that the type declaration of isIncr comes later
 mutual
 -->
 
-### Modelling the System
+The system is modelled as follows, in which `MkReg x y`, `abst`, and `ltu` are provided by SynQ.
+`MkReg x y` provides a _register_, or, in the synchronous process network context, a feedback loop with unit-delay, with two ports locally named `x` (the output port) and `y` (the input port).
 
 ```idris
-  isIncr (MkReg get set) = abst $ \xin =>
-    do pre <- get
-       _   <- set xin
-       pure $ ltu pre xin
+  isIncr reg@(MkReg get set) =
+    abst $ \xin =>
+      do pre <- get
+         _   <- set xin
+         pure $ ltu pre xin
 ```
 
 ```idris
