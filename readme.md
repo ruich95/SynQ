@@ -187,6 +187,8 @@ The figure below shows the result of how our system reacts to the environment cr
 </p>
  
 ### Generating Verilog HDL
+Besides being interpreted as Idris2 functions, models in SynQ can also be interpreted as synthesisable Verilog HDL code, which is conducted by invoking `writeVerilog` function as shown below:
+
 ```idris
 genDemo: IO ()
 genDemo = writeVerilog "demo_sys" (isIncr reg)
@@ -195,14 +197,14 @@ genDemo = writeVerilog "demo_sys" (isIncr reg)
 ```bash
 λΠ> :exec genDemo
 ```
+The result can be visualised as the following netlist:
 
 <p align="center">
 <img src="./doc/figs/readme_verilog_netlist.png" width=500>
 </p>
 
-<details>
- 
-<summary> Generating Sinusoidal Wave </summary>
+To ease the validation process, we can define another SynQ model that produces a sinusoidal signal 
+(which is, of course, not the most efficient way, we do it just because we can):
 
  ``` idris
 sine: Vect 32 UInt8
@@ -239,12 +241,11 @@ sineSigProg = putStrLn $ show $
 genSine: IO ()
 genSine = writeVerilog "sine" (sineSig reg)
 ```
-</details>
-
+We can use them in an EDA tool (Vivado in our case):
 <p align="center">
 <img src="./doc/figs/readme_block_design.png" width=1000>
 </p>
-
+Then deploy the system on an FPGA (Zynq here) and capture the waveform.
 <p align="center">
 <img src="./doc/figs/readme_ila_waveform.png" width=1000>
 </p>
@@ -268,7 +269,14 @@ testHDL = writeVerilog "seq_assign" $ test {comb = NetList.Combinational}
 -->
 
 
-## Prove Properties
+### Prove Properties
+
+Since SynQ models are interpreted as Idris2 terms (the Verilog HDL interpretation also relies on intermediate Idris2 terms), we can easily reason about modelled systems' properties in the quantitative type system.
+The following code snippet shows how the proposition on the `isIncr`'s functional behaviour that
+> Assume the implementation of `ltu` is correct (since it is implemented as a C function), then for an arbitrary input sequence $xs$ *followed by* $x$ then $y$ such that $x < y$, there always exists a sequence $ys$ such that the system's output is $ys$ followed by `1`.
+
+is specified and proved.
+
 ```idris
 %default total
 isIncrMealy: (st: !* UInt8) 
@@ -284,7 +292,8 @@ isIncrMealyPropP (MkBang st) [] x y p_ltu =
 isIncrMealyPropP (MkBang st) (st' :: xs) x y p_ltu = 
   let (ys ** prf) = isIncrMealyPropP (MkBang st') xs x y p_ltu
   in rewrite prf in (bvLtu st st' :: ys ** Refl)
-
+```
+<!-- idris
 isIncrMealyPropN: (st: !* UInt8) 
   -> (xs: List UInt8) -> (x: UInt8) -> (y: UInt8)
   -> (p_ltu: bvLtu x y = BV 0)
@@ -295,4 +304,4 @@ isIncrMealyPropN (MkBang st) (st' :: xs) x y p_ltu =
   let (ys ** prf) = isIncrMealyPropN (MkBang st') xs x y p_ltu
   in rewrite prf in (bvLtu st st' :: ys ** Refl)
       
-```
+-->
