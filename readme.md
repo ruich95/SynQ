@@ -179,7 +179,7 @@ reactIsIncr = runReact input (isIncr reg) (MkBang $ BV 0)
 
 ```
 As a reactive program, it can be integrated with other programs.
-For instance, this [notebook]("./src/python/readme_example.ipynb") illustrates how we can use Python to synthesise input data and monitor the output of the system.
+For instance, this [notebook](./src/python/readme_example.ipynb) illustrates how we can use Python to synthesise input data and monitor the output of the system.
 The figure below shows the result of how our system reacts to the environment created by Python.
 
 <p align="center">
