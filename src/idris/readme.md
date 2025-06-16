@@ -51,15 +51,17 @@ import Language.Reflection
 mutual
 -->
 
-The system is modelled as follows, in which `MkReg x y`, `abst`, and `ltu` are provided by SynQ.
-`MkReg x y` provides a _register_, or, in the synchronous process network context, a feedback loop with unit-delay, with two ports locally named `x` (the output port) and `y` (the input port).
+The system is modelled as follows, in which `MkReg get set`, `abst`, and `ltu` are provided by SynQ.
+- `MkReg get set` provides a _register_, or, in the synchronous process network context, a _feedback loop with unit delay_, with two ports locally named `get` (the output port) and `set` (the input port), respectively;
+- `abst $ \xin => ...` specifies that the input of the system is referred to as `xin` in the model; and
+- `pre \` ltu\` xin` asserts whether `pre` is less than `xin` by treating all operands as unsigned values.
 
 ```idris
   isIncr reg@(MkReg get set) =
     abst $ \xin =>
       do pre <- get
          _   <- set xin
-         pure $ ltu pre xin
+         pure $ pre `ltu` xin
 ```
 
 ```idris
