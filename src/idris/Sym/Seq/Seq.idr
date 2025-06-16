@@ -6,11 +6,12 @@ import Data.BitVec
 import Data.Signal
 import Data.State
 
+%hide Data.Linear.Interface.seq
 
 public export
 interface Comb comb 
-  => Seq (comb: Type -> Type -> Type)
-         (seq: Type -> Type -> Type -> Type) | seq where
+  => Seq (0 comb: Type -> Type -> Type)
+         (0 seq: Type -> Type -> Type -> Type) | seq where
   
   abst: {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
      -> {auto sIsState: St s}

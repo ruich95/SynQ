@@ -16,14 +16,14 @@ authors = "Rui Chen"
 depends = linear
 
 -- modules to install
--- modules =
+modules = SynQ
 
 -- main file (i.e. file to load at REPL)
 -- main = SynQ.idr
 
 -- name of executable
 -- executable =
--- opts =
+opts = "--profile"
 sourcedir = "./src/idris"
 -- builddir =
 -- outputdir =

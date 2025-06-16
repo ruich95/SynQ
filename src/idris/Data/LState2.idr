@@ -13,7 +13,7 @@ public export
 fromST: State s a -> LState2 s (!* a)
 fromST (ST runStateT') 
   = LST2 $ \st => let Id (st', x) = runStateT' st
-                  in MkBang x # st
+                  in MkBang x # st'
 
 public export
 pure: (a) -@ LState2 s a

@@ -7,6 +7,8 @@ import Sym.Seq.SeqPrimitive
 import Data.Signal
 import Data.State
 
+%hide Data.Linear.Interface.seq
+
 public export
 applyFst: {comb: _} -> {seq: _} -> (Seq comb seq)
        => {auto sIsState: St s} -> {auto aIsSig: Sig a}
@@ -31,7 +33,7 @@ applySnd fs =
 
 public export
 scan: {comb: _} -> {seq: _} -> (Seq comb seq)
-  => (1 reg: Reg comb seq) 
+  => (1 reg: Reg c comb seq) 
   -> {auto sIsState: St s} -> {auto aIsSig: Sig a}
   -> {auto bIsSig: Sig b} -> {auto cIsSig: Sig c}
   -> {auto similar: SameShape c s}    
@@ -41,3 +43,13 @@ scan (MkReg get set) f =
            =<< (applySnd $ abst set) 
            =<< pure (lam $ \y => app f $ prod x y)
            =<< get
+
+-- monad-style bind
+public export
+(>>=): (Seq comb seq)
+    => {auto aIsSig: Sig a} -> {auto bIsSig: Sig b} 
+    -> {auto sIsState: St s}
+    -> (1 x: seq s () a)
+    -> (1 f: comb () a -> seq s () b)
+    -> seq s () b
+(>>=) x f = (abst f) =<< x

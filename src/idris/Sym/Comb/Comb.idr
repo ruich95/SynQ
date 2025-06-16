@@ -4,7 +4,7 @@ import Data.Signal
 import Data.BitVec
 
 public export
-interface Comb (comb: Type -> Type -> Type) where
+interface Comb (0 comb: Type -> Type -> Type) where
   lam: {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
     -> (comb () a -> comb () b) -> comb a b
     
