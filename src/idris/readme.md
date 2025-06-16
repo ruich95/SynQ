@@ -72,11 +72,20 @@ It reflects one fact intended to be validated by the design and implementation o
 
 > Synchronous systems can be modelled by a subset of a functional language (Idris2 in our case), and this subset can be dug out of Idris2 by types.
 
+Therefore, our model above is just an Idris2 term in this subset and, hence, looks Idris-ish.
+
+The type of the model is given as
 ```idris
   isIncr: (Seq comb seq, Primitive comb)
     => (1 reg: Reg UInt8 comb seq)
     -> seq (!* UInt8) UInt8 (BitVec 1)
 ```
+in which `seq (!* UInt8) UInt8 (BitVec 1)` is the *type* of the system:
+- `seq: Type -> Type -> Type -> Type` is the abstract type variable for modelled *stateful* systems;
+- `(!* UInt8)` is the type of the system's state;
+- `UInt8` is the type of its input; and
+- `BitVec 1`  is the type of its output.
+
 <!--
 mutual end
 -->
