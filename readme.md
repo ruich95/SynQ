@@ -81,22 +81,22 @@ The type of the model is given as
     -> seq (!* UInt8) UInt8 (BitVec 1)
 ```
 in which `seq (!* UInt8) UInt8 (BitVec 1)` is the *type* of the system:
-- `seq: Type -> Type -> Type -> Type` is the abstract type variable for *stateful* synchronous systems, which should be an instance of the interface/type class `Seq`;
+- `seq: Type -> Type -> Type -> Type` is the abstract type variable for *stateful* synchronous systems, which should be an instance of the interface/type class `Seq` and `Reg`;
 - `!* UInt8` is the type of the system's state;
 - `UInt8` is the type of its input; and
 - `BitVec 1`  is the type of its output.
   
-What is special in SynQ is the parameter type `(1 reg: Reg UInt8 comb seq)`, in which `1` is a multiplicity in [Quantitative Type Theory](https://idris2.readthedocs.io/en/latest/tutorial/multiplicities.html) stating that `reg` should be used **exactly once** in the system.
+What is special in SynQ is the parameter type `(1 reg: Reg UInt8 comb seq)`, in which `1` is a multiplicity in [Quantitative Type Theory](https://idris2.readthedocs.io/en/latest/tutorial/multiplicities.html) stating that `reg` should be used **exactly once** in the system (**linearity**).
 The multiplicity `1` is used here so that: 
 - Some Idris2 terms which does not correspond to synchronous systems can be rejected by the type checker, e.g.,
   ```
-  isIncr' reg@(MkReg get set) =
+  isIncr' (MkReg get set) =
     abst $ \xin =>
       do pre <- get
          _   <- set pre
          _   <- set xin
-         {- ^ Assign the register twice, which may result in undefined behaviour
-            | under some interpretation, e.g., the Verilog HDL interpretation.-}
+         {- Assign the register twice, which may result in undefined behaviour
+            under some interpretation, e.g., the Verilog HDL interpretation.-}
          pure $ pre `ltu` xin
   ```
 - All instances (interpretations) of `seq (!* UInt8) UInt8 (BitVec 1)` use exactly one register, and hence have exactly one state of type `!* UInt8`, only.
@@ -106,8 +106,59 @@ mutual end
 -->
 
 ### Run as a program
-Thanks to the [Tagless Final Embedding](https://okmij.org/ftp/tagless-final/), a SynQ term can be interpreted differently.
+A SynQ term can be interpreted differently.
 Each interpretation of a SynQ term models an _aspect_ of the corresponding synchronous system.
+One of the aspects is the *functional behaviour*, which is obtained by interpreting SynQ terms directly as Idris2 functions. 
+The following function is used to interpret a SynQ term to a *Mealy machine*
+```
+runMealy: (Sequential s a b) 
+  -> s -> List a -> (s, List b)
+runMealy sys st xs = runMealy' sys (st, []) xs
+```
+where `Sequential` is an instance that implements the corresponding interfaces.
+
+<details>
+ <summary>Remark</summary> 
+ 
+With `runMealy`, we have relaxed the restriction given by the *linearity (multiplicity `1`)*. 
+A more restricted version is: 
+```
+runSeq: (1 _: Sequential s a b) -> a -> LState s b
+runSeq (MkSeq f) = f
+
+runMealy: (Sequential s a b) 
+  -> List a -> LState s (List b)
+runMealy f [] = LST $ \1 st => st # []
+runMealy f (x :: xs) = 
+  LST $ \1 st'' => 
+    let (st' # y)  = runState (runSeq f $ x) st''
+        (st  # ys) = runState (runMealy f xs) st'
+    in (st # y :: ys)
+```
+ However, the implementation of interfaces still needs to obey *linearity* in all cases. 
+</details>
+
+We can run `isIncr` defined earlier by wrapping it as follows 
+(because our implementation of this interpretation relies on C functions, which cannot be evaluated in the REPL)
+```idris
+fnIsIncr: IO ()
+fnIsIncr = printLn $ show 
+  $ runMealy (isIncr reg) (MkBang 0) [1, 2, 3, 4, 3, 2, 1, 0]
+```
+where `reg` is required for `isIncr` because we use the parameters of `isIncr` to simulate the context of the model in SynQ.
+`MkBang 0` is the initial state of the system, and `[1, 2, 3, 4, 3, 2, 1, 0]` is a sequence of input events provided to the system.
+This function can be compiled and executed by
+```
+λΠ> :exec fnIsIncr
+```
+And the output is
+```
+(! 8'd0, [1'd1, 1'd1, 1'd1, 1'd1, 1'd0, 1'd0, 1'd0, 1'd0])
+```
+where `! 8'd0` is the final state (with Verilog style literal), and `[1'd1, 1'd1, 1'd1, 1'd1, 1'd0, 1'd0, 1'd0, 1'd0]` is the sequence of the output events.
+
+Alternatively, SynQ models can also be interpreted and compiled as reactive programs by `reactMealy`, together with a function that interprets inputs from the outside world into data of the correct types.
+The following shows how we interpret `isIncr` as a reactive program.
 
 ```idris
 %unhide Prelude.(>>=)
@@ -126,7 +177,11 @@ reactIsIncr = runReact input (isIncr reg) (MkBang $ BV 0)
 %hide Prelude.(>>=)
 %hide Prelude.pure
 
-``` 
+```
+As a reactive program, it can be integrated with other programs.
+For instance, this [notebook]("./src/python/readme_example.ipynb") illustrates how we can use Python to synthesise input data and monitor the output of the system.
+The figure below shows the result of how our system reacts to the environment created by Python.
+
 <p align="center">
   <img src="./doc/figs/readme_react_python_example.png" width=500>
 </p>
