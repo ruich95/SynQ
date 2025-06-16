@@ -106,6 +106,9 @@ mutual end
 -->
 
 ### Run as a program
+Thanks to the [Tagless Final Embedding](https://okmij.org/ftp/tagless-final/), a SynQ term can be interpreted differently.
+Each interpretation of a SynQ term models an _aspect_ of the corresponding synchronous system.
+
 ```idris
 %unhide Prelude.(>>=)
 %unhide Prelude.pure
