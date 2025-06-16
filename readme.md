@@ -9,7 +9,21 @@ SynQ (**Syn**chronous System Design with **Q**uantitative Types) is an embedded 
 
 ## A Crash Course in SynQ
 
-As its name suggests, SynQ is a DSL targeting the design of synchronous systems, which, intuitively, are reactive systems that always produce an event when an event is consumed.
+As its name suggests, SynQ is a DSL targeting the design of synchronous systems, which, intuitively, are reactive systems that always have aligned inputs and outputs.
+That is, whenever an event is consumed by a synchronous system, the corresponding event will be produced.
+We demonstrate the basic usage of SynQ here by designing a toy system that *monitors if its input is increasing* in SynQ.
+Specifically, it will be demonstrated here that:
+
+- how the system is modelled in SynQ;
+- how the modelled system can be interpreted and compiled as an Idris2 function, which allows the system to be tested quickly;
+- how the modelled system can be interpreted to synthesizable Verilog HDL code; and
+- how properties of the modelled system (its interpretation indeed) can be specified and proved in Idris2's type system.
+
+*This file itself is a [literate file](https://idris2.readthedocs.io/en/latest/reference/literate.html), meaning that you can load this file into Idris2 and try it yourself.*
+
+### Step 0: Import SynQ
+
+SynQ is an Idris2 library; once it has been installed, you can import it just like importing other libraries.
 
 ```idris
 import SynQ
@@ -17,7 +31,8 @@ import SynQ
 
 <!-- idris
 import Data.String
-import Data.List1
+import Data.Vect
+import Language.Reflection
 
 %hide Prelude.(>>=)
 %hide Prelude.pure
@@ -25,34 +40,79 @@ import Data.List1
 %hide Data.LState.(>>=)
 %hide Data.LState.(<<<)
 %ambiguity_depth 8
+
+%language ElabReflection
 -->
 
+### Modelling the System
+
 <!-- idris 
--- so that tye declaration of isIncr comes later
+-- so that the type declaration of isIncr comes later
 mutual
 -->
 
+The system is modelled as follows, in which `MkReg get set`, `abst`, and `ltu` are provided by SynQ.
+- `MkReg get set` provides a _register_, or, in the synchronous process network context, a _feedback loop with unit delay_, with two ports locally named `get` (the output port) and `set` (the input port), respectively;
+- `abst $ \xin => ...` specifies that the input of the system is referred to as `xin` in the model; and
+- ``pre `ltu` xin`` asserts whether `pre` is less than `xin` by treating all operands as unsigned values.
+
+The `do` notation indicates that operations in its scope are applied sequentially on the system's (the register's) state.
+That is, for each input event, the system will first retrieve the state of the register (via `get`), bind the retrieved state to the name `pre`, and then update the state to the current input (via `set`), which will be used in the next event.
+Finally, the result of comparing `pre` and `ltu` will be the output, and the comparison does not change/rely on the state (suggested by `pure`).
+
 ```idris
-
-  isIncr (MkReg get set) = abst $ \xin =>
-    do pre <- get
-       _   <- set xin
-       pure $ ltu pre xin
+  isIncr reg@(MkReg get set) =
+    abst $ \xin =>
+      do pre <- get
+         _   <- set xin
+         pure $ pre `ltu` xin
 ```
+If you are familiar with **monads**, the code snippet shown above should look natural to you.
+It reflects one fact intended to be validated by the design and implementation of SynQ, that:
 
+> Synchronous systems can be modelled by a subset of a functional language (Idris2 in our case), and this subset can be dug out of Idris2 by types.
+
+Therefore, our model above is just an Idris2 term in this subset and, hence, looks Idris-ish.
+
+The type of the model is given as
 ```idris
   isIncr: (Seq comb seq, Primitive comb)
     => (1 reg: Reg UInt8 comb seq)
     -> seq (!* UInt8) UInt8 (BitVec 1)
 ```
+in which `seq (!* UInt8) UInt8 (BitVec 1)` is the *type* of the system:
+- `seq: Type -> Type -> Type -> Type` is the abstract type variable for *stateful* synchronous systems, which should be an instance of the interface/type class `Seq`;
+- `!* UInt8` is the type of the system's state;
+- `UInt8` is the type of its input; and
+- `BitVec 1`  is the type of its output.
+  
+What is special in SynQ is the parameter type `(1 reg: Reg UInt8 comb seq)`, in which `1` is a multiplicity in [Quantitative Type Theory](https://idris2.readthedocs.io/en/latest/tutorial/multiplicities.html) stating that `reg` should be used **exactly once** in the system.
+The multiplicity `1` is used here so that: 
+- Some Idris2 terms which does not correspond to synchronous systems can be rejected by the type checker, e.g.,
+  ```
+  isIncr' reg@(MkReg get set) =
+    abst $ \xin =>
+      do pre <- get
+         _   <- set pre
+         _   <- set xin
+         {- ^ Assign the register twice, which may result in undefined behaviour
+            | under some interpretation, e.g., the Verilog HDL interpretation.-}
+         pure $ pre `ltu` xin
+  ```
+- All instances (interpretations) of `seq (!* UInt8) UInt8 (BitVec 1)` use exactly one register, and hence have exactly one state of type `!* UInt8`, only.
+  
 <!--
 mutual end
 -->
 
-## Run as a program
+### Run as a program
+Thanks to the [Tagless Final Embedding](https://okmij.org/ftp/tagless-final/), a SynQ term can be interpreted differently.
+Each interpretation of a SynQ term models an _aspect_ of the corresponding synchronous system.
+
 ```idris
 %unhide Prelude.(>>=)
 %unhide Prelude.pure
+
 input: IO UInt8
 input = do str <- getLine
            Just x <- pure $ parseInteger {a=Integer} str
@@ -65,83 +125,78 @@ reactIsIncr = runReact input (isIncr reg) (MkBang $ BV 0)
 
 %hide Prelude.(>>=)
 %hide Prelude.pure
-```
 
-<!-- idris
-%hint
-lteSucc: (n:Nat) -> LTE n (S n)
-lteSucc 0 = LTEZero
-lteSucc (S k) = LTESucc (lteSucc k)
-
-0 minusZero: (n:Nat) -> n = minus n 0
-minusZero 0 = Refl
-minusZero (S k) = Refl
-
-lutGen': (Comb comb, Primitive comb)
-     => (idx_width: Nat)
-     -> (data_width: Nat)
-     -> (List1 $ BitVec data_width)
-     -> (start: comb () $ BitVec idx_width)
-     -> comb () (BitVec idx_width) 
-     -> comb () (BitVec data_width)
-lutGen' idx_width data_width (x ::: []) start idx = const x
-lutGen' idx_width data_width (x ::: (y :: xs)) start idx = 
-  let next_start = rewrite minusZero idx_width 
-                   in slice 0 idx_width $ add start $ const $ 1
-  in mux21 (eq start idx) (const x) 
-           (lutGen' idx_width data_width (y:::xs) next_start idx)
-
-
-lutGen: (Comb comb, Primitive comb)
-     => {idx_width: Nat}
-     -> {data_width: Nat}
-     -> (List1 $ BitVec data_width)
-     -> comb () (BitVec idx_width) 
-     -> comb () (BitVec data_width)
-lutGen {idx_width} {data_width} xs idx 
-  = lutGen' idx_width data_width xs (const $ 0) idx
-  
-sine: List1 UInt8
-sine = (100) ::: [119, 138, 155, 170, 183, 192, 198, 200, 198, 192, 183, 170,
-                  155, 138, 119, 100,  80,  61,  44,  29,  16,   7,   1,   0, 1,
-                  7,   16,  29,  44,  61,  80]
-
-sineSig: (Comb comb, Primitive comb)
-     => comb () UInt8 -> comb () UInt8
-sineSig idx = lutGen sine idx
-
-sineSrc: (Seq comb seq, Primitive comb)
-  => (1 reg: Reg UInt8 comb seq)
-  -> seq (!* UInt8) () UInt8
-sineSrc (MkReg get set) = 
-  do cur_idx <- get
-     o <- pure $ sineSig cur_idx
-     _ <- set (mux21 (ltu cur_idx $ const $ 31)
-                     (slice 0 8 $ add cur_idx $ const $ 1)
-                     (const $ 0))
-     pure o
-     
-sineSigProg: IO ()
-sineSigProg = putStrLn $ show $ runMealy (sineSrc reg) (MkBang 0) 
-              [(), (), (), (), (), (), (), (), (), (), (), (), (), (), ()]
-              
-genSine: IO ()
-genSine = writeVerilog "sine" (sineSrc reg)
--->
-
-## Generate HDL
+``` 
+<p align="center">
+  <img src="../../doc/figs/readme_react_python_example.png" width=500>
+</p>
+ 
+### Generating Verilog HDL
 ```idris
 genDemo: IO ()
 genDemo = writeVerilog "demo_sys" (isIncr reg)
 ```
 
 ```bash
-λΠ> :exec genHDL
+λΠ> :exec genDemo
 ```
 
-## Unrestricted Register Usage
+<p align="center">
+<img src="../../doc/figs/readme_verilog_netlist.png" width=500>
+</p>
 
-```idris
+<details>
+ 
+<summary> Generating Sinusoidal Wave </summary>
+
+ ``` idris
+sine: Vect 32 UInt8
+sine = [100, 119, 138, 155, 170, 183, 192, 198, 
+        200, 198, 192, 183, 170, 155, 138, 119, 
+        100,  80,  61,  44,  29,  16,   7,   1,   
+          0,   1,   7,  16,  29,  44,  61,  80]
+
+
+sineLut: (Primitive comb)
+  => comb () UInt8 -> comb () UInt8
+sineLut = %runElab lutGen sine
+
+sineSig: (Seq comb seq, Primitive comb)
+  => (1 reg: Reg UInt8 comb seq)
+  -> seq (!* UInt8) () UInt8
+sineSig (MkReg get set) = 
+  do cur_idx <- get
+     o <- pure $ sineLut cur_idx
+     _ <- set (mux21 (ltu cur_idx $ const $ 31)
+                     (slice 0 8 $ add cur_idx $ const $ 1)
+                     (const $ 0))
+     pure o
+     
+sineSigProg: IO ()
+sineSigProg = putStrLn $ show $ 
+                runMealy (sineSig reg) (MkBang 0) 
+                  {- sample 32 events -}
+                  [(), (), (), (), (), (), (), (), 
+                   (), (), (), (), (), (), (), (), 
+                   (), (), (), (), (), (), (), (), 
+                   (), (), (), (), (), (), (), ()]
+              
+genSine: IO ()
+genSine = writeVerilog "sine" (sineSig reg)
+```
+</details>
+
+<p align="center">
+<img src="../../doc/figs/readme_block_design.png" width=1000>
+</p>
+
+<p align="center">
+<img src="../../doc/figs/readme_ila_waveform.png" width=1000>
+</p>
+
+<!-- ## Unrestricted Register Usage -->
+
+<!-- idris
 test: (Seq comb seq, Primitive comb, 
        Reg UInt8 comb seq)
   => seq (!* UInt8) UInt8 UInt8
@@ -155,8 +210,7 @@ test = abst $ \x =>
 
 testHDL: IO ()
 testHDL = writeVerilog "seq_assign" $ test {comb = NetList.Combinational}
-
-```
+-->
 
 
 ## Prove Properties
