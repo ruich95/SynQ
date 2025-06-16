@@ -56,6 +56,10 @@ The system is modelled as follows, in which `MkReg get set`, `abst`, and `ltu` a
 - `abst $ \xin => ...` specifies that the input of the system is referred to as `xin` in the model; and
 - ``pre `ltu` xin`` asserts whether `pre` is less than `xin` by treating all operands as unsigned values.
 
+The `do` notation indicates that operations in its scope are applied sequentially on the system's (the register's) state.
+That is, for each input event, the system will first retrieve the state of the register (via `get`), bind the retrieved state to the name `pre`, and then update the state to the current input (via `set`), which will be used in the next event.
+Finally, the result of comparing `pre` and `ltu` will be the output, and the comparison does not change/rely on the state (suggested by `pure`).
+
 ```idris
   isIncr reg@(MkReg get set) =
     abst $ \xin =>
@@ -63,6 +67,10 @@ The system is modelled as follows, in which `MkReg get set`, `abst`, and `ltu` a
          _   <- set xin
          pure $ pre `ltu` xin
 ```
+If you are familiar with **monads**, the code snippet shown above should look natural to you.
+It reflects one fact intended to be validated by the design and implementation of SynQ, that:
+
+> Synchronous systems can be modelled by a subset of a functional language (Idris2 in our case), and this subset can be dug out of Idris2 by types.
 
 ```idris
   isIncr: (Seq comb seq, Primitive comb)
@@ -93,8 +101,8 @@ reactIsIncr = runReact input (isIncr reg) (MkBang $ BV 0)
 
 ``` 
 <p align="center">
-<img src="../../doc/figs/readme_react_python_example.png" width=500>
-<\p>
+  <img src="../../doc/figs/readme_react_python_example.png" width=500>
+</p>
  
 ### Generating Verilog HDL
 ```idris
@@ -106,7 +114,9 @@ genDemo = writeVerilog "demo_sys" (isIncr reg)
 λΠ> :exec genDemo
 ```
 
-![img](../../doc/figs/readme_verilog_netlist.png)
+<p align="center">
+<img src="../../doc/figs/readme_verilog_netlist.png" width=500>
+</p>
 
 <details>
  
@@ -149,8 +159,13 @@ genSine = writeVerilog "sine" (sineSig reg)
 ```
 </details>
 
-![img](../../doc/figs/readme_block_design.png)
-![img](../../doc/figs/readme_ila_waveform.png)
+<p align="center">
+<img src="../../doc/figs/readme_block_design.png" width=1000>
+</p>
+
+<p align="center">
+<img src="../../doc/figs/readme_ila_waveform.png" width=1000>
+</p>
 
 <!-- ## Unrestricted Register Usage -->
 
