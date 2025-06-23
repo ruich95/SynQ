@@ -13,7 +13,7 @@ interface Comb comb
   => Seq (0 comb: Type -> Type -> Type)
          (0 seq: Type -> Type -> Type -> Type) | seq where
   
-  abst: {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
+  abst: {0 a:_} -> {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
      -> {auto sIsState: St s}
      -> (1 _: comb () a -> seq s () b) -> seq s a b
      
