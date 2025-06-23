@@ -52,4 +52,4 @@ public export
     -> (1 x: seq s () a)
     -> (1 f: comb () a -> seq s () b)
     -> seq s () b
-(>>=) x f = (abst f) =<< x
+(>>=) x f = Seq.(=<<) {a=()} {b=a} (abst {b=b} f) x

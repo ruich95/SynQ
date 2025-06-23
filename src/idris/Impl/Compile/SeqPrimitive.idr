@@ -35,7 +35,7 @@ Seq Combinational Sequential => Reg a Combinational Sequential where
                                   let () = stConsume st' 
                                   in (st # ())
 
--- public export
+public export
 reg: (Seq Combinational Sequential) => {0 b:_} -> Reg b Combinational Sequential
 reg {b} = MkReg get set
 where

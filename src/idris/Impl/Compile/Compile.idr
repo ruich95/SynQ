@@ -63,13 +63,13 @@ sigConstant {aIsSig = BV {n=n}} = MkComb $ pure $ \_ => BV {n=n} 0
 
 public export
 free: {aIsSig: Sig a} -> (1 _: Combinational () a -> Sequential s () b)
-  -> !* (Elab $ a -> LState s b)
+  -> !* (Elab $ Combinational () a -> Sequential s () b)
 free f = let c = sigConstant {aIsSig=aIsSig}
              MkSeq f' = f c
          in MkBang $ do f <- quote f 
-                        f : (Combinational () a -> Sequential s () b) <- check f
-                        lambda _ $ \x => let g = genSeq $ f (MkComb $ pure $ \_ => x) 
-                                         in g <*> pure ()
+                        check f
+--                      lambda _ $ \x => let g = genSeq $ f (MkComb $ pure $ \_: () => x) 
+--                                       in g <*> pure ()
 -- free {aIsSig = U} f = 
 --   let MkSeq f' = f (MkComb $ pure $ \_ => ()) 
 --   in MkBang f'
