@@ -168,9 +168,7 @@ flatT: (p: TPort a) -> (q: TPort a)
   -> List (p':Port ** (q':Port ** (SimplePort p', SimplePort q')))
 flatT p q = flat (fromTP p) (fromTP q) (sameTypeSameShape p q)
 
--- flat p@(SP _ _ _) q@(SP _ _ _) = [(p ** (q ** (IsSP, IsSP)))]
--- flat (CP p1 p2) (CP q1 q2) = flat p1 q1 ++ flat p2 q2
--- flat _ _ = []
+
 
 
 

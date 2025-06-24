@@ -41,7 +41,8 @@ Comb Combinational where
   app f x  = MkComb 
     $ do x' <- genComb x
          f' <- genComb f
-         pure $ f' . x'
+         -- pure $ f' . x'
+         pure $ f' <<= x'
                 
   prod x y = MkComb 
     $ do x' <- genComb x

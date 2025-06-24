@@ -37,3 +37,11 @@ instinate (MkModuleDecl name params p1 p2)
         oPA = fromTPA $ (TPA p2 oPort)
     in MkModuleInst name idx aParams iPA oPA
     
+export
+replacePortInModule: 
+     (p: Port) -> (prfp: SimplePort p)
+  -> (q: Port) -> (prfq: SimplePort q) 
+  -> (m: ModuleInst) -> ModuleInst
+replacePortInModule p prfp q prfq m = 
+  let f = replacePortAssignWith p prfp q prfq
+  in {iPA $= f, oPA $= f} m

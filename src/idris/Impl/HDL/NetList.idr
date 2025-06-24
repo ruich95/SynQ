@@ -30,6 +30,38 @@ export
            (f.assignedPorts ++ g.assignedPorts ++ [p])
            (f.instModules ++ g.instModules)
            
+-- do not touch IO
+replaceInnerPortCNL: 
+     (p: Port) -> (prfp: SimplePort p)
+  -> (q: Port) -> (prfq: SimplePort q) 
+  -> CombNL a b -> CombNL a b
+replaceInnerPortCNL p prfp q prfq nl = 
+  let fPA = replacePortAssignWith p prfp q prfq 
+      fM  = replacePortInModule p prfp q prfq 
+  in {assignedPorts $= map fPA, instModules $= map fM} nl
+
+replaceAllInnerPortCNL': 
+  List (p':Port ** (q':Port ** (SimplePort p', SimplePort q'))) -> CombNL a b -> CombNL a b
+replaceAllInnerPortCNL' [] nl = nl
+replaceAllInnerPortCNL' ((p ** (q ** (prfp, prfq))) :: xs) nl = 
+  replaceAllInnerPortCNL' xs (replaceInnerPortCNL p prfp q prfq nl)
+  
+replaceAllInnerPortCNL: (p: TPort c) -> (q: TPort c) 
+  -> CombNL a b -> CombNL a b
+replaceAllInnerPortCNL p q nl = 
+  let pairs = flatT p q 
+  in replaceAllInnerPortCNL' pairs nl
+
+public export infixr 9 <<=
+
+export
+(<<=): CombNL b c -> CombNL a b -> CombNL a c
+(<<=) g f = 
+  let g' = replaceAllInnerPortCNL g.iPort f.oPort g
+  in MkCNL f.iPort g.oPort 
+           (f.assignedPorts ++ g'.assignedPorts)
+           (f.instModules ++ g'.instModules)
+
 
 public export
 record Combinational a b where
