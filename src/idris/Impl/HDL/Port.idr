@@ -116,4 +116,61 @@ Eq Port where
   (==) (UP nm1) (UP nm2) 
     = nm1 == nm2
   (==) _ _ = False
+  
+  
+public export
+data SimplePort: Port -> Type where
+  IsSP: SimplePort (SP _ _ _)
+
+
+-- replace all occurance of p in pp with q
+export
+replacePortWith: (p: Port) -> (prfp: SimplePort p)
+  -> (q: Port) -> (prfq: SimplePort q) 
+  -> (pp: Port) -> Port
+replacePortWith p@(SP _ _ _) IsSP q@(SP _ _ _) IsSP pp@(SP nm len val) = 
+  if pp == p then q else pp 
+replacePortWith p@(SP _ _ _) IsSP q@(SP _ _ _) IsSP (CP p1 p2) 
+  = CP (replacePortWith p IsSP q IsSP p1)
+       (replacePortWith p IsSP q IsSP p2)
+replacePortWith p@(SP _ _ _) IsSP q@(SP _ _ _) IsSP pp@(UP nm) = pp
+
+export
+replacePortAssignWith: (p: Port) -> (prfp: SimplePort p)
+  -> (q: Port) -> (prfq: SimplePort q) 
+  -> (pa: PortAssign) -> PortAssign
+replacePortAssignWith p@(SP _ _ _) IsSP q@(SP _ _ _) IsSP (PA lhs rhs) = 
+  PA (replacePortWith p IsSP q IsSP lhs)
+     (replacePortWith p IsSP q IsSP rhs)
+
+public export
+data SameShape: Port -> Port -> Type where
+  SSP: SameShape (SP _ len _) (SP _ len _)
+  SCP: SameShape p1 q1 -> SameShape p2 q2 -> SameShape (CP p1 p2) (CP q1 q2)
+  SUP: SameShape (UP _) (UP _)
+
+export
+flat: (p: Port) -> (q: Port) -> (same: SameShape p q) 
+  -> List (p':Port ** (q':Port ** (SimplePort p', SimplePort q')))
+flat p@(SP _ len _) q@(SP _ len _) SSP = [(p ** (q ** (IsSP, IsSP)))]
+flat (CP p1 p2) (CP q1 q2) (SCP x y) = flat p1 q1 x ++ flat p2 q2 y
+flat (UP _) (UP _) SUP = []
+
+export
+sameTypeSameShape: (p: TPort a) -> (q: TPort a) -> SameShape (fromTP p) (fromTP q)
+sameTypeSameShape p@(SP nm len val) (SP nm1 len val1) = SSP
+sameTypeSameShape p@(CP p1 p2) (CP q1 q2) = SCP (sameTypeSameShape p1 q1) (sameTypeSameShape p2 q2)
+sameTypeSameShape p@(UP nm) (UP nm1) = SUP
+sameTypeSameShape _ _  = absurd (the Void (believe_me ()))
+
+export 
+flatT: (p: TPort a) -> (q: TPort a) 
+  -> List (p':Port ** (q':Port ** (SimplePort p', SimplePort q')))
+flatT p q = flat (fromTP p) (fromTP q) (sameTypeSameShape p q)
+
+-- flat p@(SP _ _ _) q@(SP _ _ _) = [(p ** (q ** (IsSP, IsSP)))]
+-- flat (CP p1 p2) (CP q1 q2) = flat p1 q1 ++ flat p2 q2
+-- flat _ _ = []
+
+
 
