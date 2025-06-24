@@ -25,7 +25,7 @@ import Data.List
 import Data.LC 
 
 public export
-Reg a Combinational Sequential where
+Reg Combinational Sequential where
   set (MkComb x) = MkSeq $ 
     do (MkBang comb) <- fromST x
        pure $ let p = comb.oPort 
@@ -46,7 +46,7 @@ Reg a Combinational Sequential where
                                      (MkBang p))
 
 public export                                   
-reg: Reg a Combinational Sequential
+reg: Reg Combinational Sequential
 reg = MkReg get set
 where
   get: {auto aIsSig: Sig a} -> {auto sIsState: St s}

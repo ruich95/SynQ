@@ -5,13 +5,14 @@ import Impl.Compile
 %hide Data.Linear.Interface.seq
 --%hide SeqLib.(>>=)
 
-fn: (reg: Reg (BitVec 8) Compile.Combinational Compile.Sequential) 
+fn: (reg: Reg Compile.Combinational Compile.Sequential) 
  -> Compile.Sequential (!* BitVec 8) (BitVec 8) (BitVec 8)
 fn (MkReg get set) = 
-  abst {b = BitVec 8} $ \x => 
-    do y <- get {s = !* BitVec 8}
-       _ <- set {s = !* BitVec 8} x
-       pure {b = BitVec 8} y
+  abst $ \x => 
+    do y <- get {a = BitVec 8} {s = (!* BitVec 8)}
+       _ <- set {a = BitVec 8} {s = (!* BitVec 8)} x
+       pure y
+
 --                  (\t => set x)
   -- MkSeq $ do set' <- quote (\x => set {s = !* (BitVec 8)} x)
   --            set' <- check set'
@@ -25,11 +26,13 @@ fn (MkReg get set) =
 --f': (Seq comb seq) => seq (!* (BitVec 8)) (BitVec 8) (BitVec 8)
 -- f' = fn $ reg {a=BitVec 8}
 
+
 test: Elab $ (BitVec 8) -> LState (!* BitVec 8) (BitVec 8)
 test = genSeq (fn Compile.SeqPrimitive.reg)
 
 t: (BitVec 8) -> LState (!* BitVec 8) (BitVec 8)
 t = %runElab test
+
 
 
 -- (\x => set (Seq 

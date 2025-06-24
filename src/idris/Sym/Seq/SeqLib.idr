@@ -33,7 +33,7 @@ applySnd fs =
 
 public export
 scan: {comb: _} -> {seq: _} -> (Seq comb seq)
-  => (1 reg: Reg c comb seq) 
+  => (1 reg: Reg comb seq) 
   -> {auto sIsState: St s} -> {auto aIsSig: Sig a}
   -> {auto bIsSig: Sig b} -> {auto cIsSig: Sig c}
   -> {auto similar: SameShape c s}    

@@ -68,15 +68,4 @@ free f = let c = sigConstant {aIsSig=aIsSig}
              MkSeq f' = f c
          in MkBang $ do f <- quote f 
                         check f
---                      lambda _ $ \x => let g = genSeq $ f (MkComb $ pure $ \_: () => x) 
---                                       in g <*> pure ()
--- free {aIsSig = U} f = 
---   let MkSeq f' = f (MkComb $ pure $ \_ => ()) 
---   in MkBang f'
--- free {aIsSig = (P x y)} f = 
---   let c = sigConstant {aIsSig= (P x y)}
---       MkSeq f' = f c
---   in MkBang $ lambda _ $ \x => f' <*> pure ()
--- free {aIsSig = BV {n=n}} f = 
---   let MkSeq f' = f (MkComb $ pure $ \_ => (BV {n=n} 0)) 
---   in MkBang $ lambda _ $ \x => f' <*> pure ()
+                        

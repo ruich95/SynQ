@@ -22,7 +22,7 @@ Seq Combinational Sequential where
     let MkSeq f_ = f $ sigConstant {aIsSig=aIsSig}
     in MkSeq $ do f <- quote f
                   f <- check f
-                  lambda _ $ \x => 
+                  lambda a $ \x => 
                          let (MkSeq y): Sequential s () b 
                                = f $ MkComb $ pure $ \_:() => x
                          in y <*> pure ()

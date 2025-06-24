@@ -8,7 +8,7 @@ import Sym.Comb
 
 public export
 interface Comb comb 
-  => Reg (0 a: Type) (0 comb: Type -> Type -> Type)
+  => Reg (0 comb: Type -> Type -> Type)
          (0 seq: Type -> Type -> Type -> Type) | seq where
   constructor MkReg
   1 get: {auto aIsSig: Sig a} -> {auto sIsState: St s}

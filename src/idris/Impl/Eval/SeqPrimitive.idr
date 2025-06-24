@@ -17,7 +17,7 @@ import Data.Signal
 import Data.Linear
 
 public export
-Seq Combinational Sequential => Reg a Combinational Sequential where
+Seq Combinational Sequential => Reg Combinational Sequential where
   get = MkSeq 
     $ \() => LST 
       $ \st => let (MkBang st'): (!* a) = stToSig st 
@@ -29,7 +29,7 @@ Seq Combinational Sequential => Reg a Combinational Sequential where
                in st # ())
 
 public export
-reg: (Seq Combinational Sequential) => Reg a Combinational Sequential
+reg: (Seq Combinational Sequential) => Reg Combinational Sequential
 reg = MkReg get set
 where
   get: {auto aIsSig: Sig a} -> {auto sIsState: St s}

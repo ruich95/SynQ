@@ -22,7 +22,7 @@ import Data.BitVec
 %hide SeqLib.(>>=)
 
 public export
-Seq Combinational Sequential => Reg a Combinational Sequential where
+Seq Combinational Sequential => Reg Combinational Sequential where
   get = MkSeq $ lambda _ $ \_ => 
           pure $ LST $ \st => 
             let (MkBang x) = stToSig st {similar=similar} 
@@ -36,8 +36,8 @@ Seq Combinational Sequential => Reg a Combinational Sequential where
                                   in (st # ())
 
 public export
-reg: (Seq Combinational Sequential) => {0 b:_} -> Reg b Combinational Sequential
-reg {b} = MkReg get set
+reg: (Seq Combinational Sequential) => Reg Combinational Sequential
+reg = MkReg get set
 where
   get: {auto aIsSig: Sig b} -> {auto sIsState: St s}
     -> {auto similar: SameShape b s}
