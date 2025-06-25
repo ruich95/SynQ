@@ -79,6 +79,18 @@ reduce {prf2 = (AllU p)} f =
   rewrite sym $ p in lam id
 reduce {prf2 = (AllP p1 p2)} f = f << (reduce f) <> (reduce f)
 
+public export
+if_: (Comb comb, Primitive comb)
+  => {auto aIsSig : Sig a}
+  -> (b: comb () (BitVec 1)) 
+  -> (x: comb () a) -> (y: comb () a)
+  -> comb () a
+if_ {aIsSig = U} b x y = unit
+if_ {aIsSig = (P z w)} b x y = 
+  prod (if_ b (proj1 x) (proj1 y))
+       (if_ b (proj2 x) (proj2 y))
+if_ {aIsSig = BV} b x y = mux21 b x y
+
 repeat: {comb:_} -> (Comb comb)
      => {auto prf1: Sig a} 
      -> (n: Nat) -> comb a a -> comb a a

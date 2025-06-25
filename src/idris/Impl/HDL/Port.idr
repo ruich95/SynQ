@@ -163,7 +163,7 @@ replacePortAssignWith p@(SP _ _ _) IsSP q@(SP _ _ _) IsSP (PA lhs rhs) =
   PA (replacePortWith p IsSP q IsSP lhs)
      (replacePortWith p IsSP q IsSP rhs)
 
-public export
+-- public export
 data SameShape: Port -> Port -> Type where
   SSP: SameShape (SP _ len _) (SP _ len _)
   SCP: SameShape p1 q1 -> SameShape p2 q2 -> SameShape (CP p1 p2) (CP q1 q2)
