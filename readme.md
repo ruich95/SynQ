@@ -204,9 +204,9 @@ The result can be visualised as the following netlist:
 </p>
 
 To ease the validation process, we can define another SynQ model that produces a sinusoidal signal 
-(which is, of course, not the most efficient way, we do it just because we can):
+(which is, of course, not the most efficient way, we do it just because we can)
 
- ``` idris
+```idris
 sine: Vect 32 UInt8
 sine = [100, 119, 138, 155, 170, 183, 192, 198, 
         200, 198, 192, 183, 170, 155, 138, 119, 

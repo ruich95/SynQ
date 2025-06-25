@@ -24,7 +24,7 @@ namespace TPort
   data TPort: Type -> Type where
     SP: Name -> (len: Nat) -> Value len -> TPort (BitVec len)
     CP: TPort a -> TPort b -> TPort (a, b)
-    UP: Name -> TPort _
+    UP: Name -> TPort ()
   
   export
   Eq (TPort a) where
@@ -41,6 +41,15 @@ namespace TPort
   fromSig (P x y) nm = CP (fromSig x ("\{nm}_0")) 
                           (fromSig y ("\{nm}_1"))
   fromSig (BV {n})  nm = SP (NM nm) n UV
+  
+  export
+  genUnKnown: Sig a -> TPort a
+  genUnKnown U = UP UN
+  genUnKnown (P x y) = 
+    CP (genUnKnown x)
+       (genUnKnown y)
+  genUnKnown (BV {n}) = SP UN n UV
+  
   
   export
   fromSig': Sig a -> (id: Nat) -> (Nat, TPort a)
@@ -82,6 +91,14 @@ fromTP (CP p1 p2)      = CP (fromTP p1) (fromTP p2)
 fromTP (UP nm)         = UP nm
 
 export
+fromTP': TPort a -> Port
+fromTP' (SP UN len UV) = UP UN
+fromTP' (SP UN len (V x)) = SP UN len (V x)
+fromTP' (SP (NM str) len val) = SP (NM str) len val
+fromTP' (CP p1 p2)      = CP (fromTP' p1) (fromTP' p2)
+fromTP' (UP nm)         = UP nm
+
+export
 fromSig: Sig a -> (nm: String) -> Port
 fromSig x nm = fromTP $ fromSig x nm
 
@@ -93,6 +110,10 @@ fromSig' x id = let (id', p) = TPort.fromSig' x id
 export
 fromTPA: TPortAssign a -> PortAssign
 fromTPA (TPA lhs rhs) = PA (fromTP lhs) (fromTP rhs)
+
+export
+fromTPA': TPortAssign a -> PortAssign
+fromTPA' (TPA lhs rhs) = PA (fromTP' lhs) (fromTP' rhs)
 
 assign: (lhs: TPort a) -> (rhs: TPort a) -> PortAssign
 assign lhs rhs = PA (fromTP lhs) (fromTP rhs)
@@ -121,7 +142,6 @@ Eq Port where
 public export
 data SimplePort: Port -> Type where
   IsSP: SimplePort (SP _ _ _)
-
 
 -- replace all occurance of p in pp with q
 export
@@ -161,7 +181,7 @@ sameTypeSameShape: (p: TPort a) -> (q: TPort a) -> SameShape (fromTP p) (fromTP 
 sameTypeSameShape p@(SP nm len val) (SP nm1 len val1) = SSP
 sameTypeSameShape p@(CP p1 p2) (CP q1 q2) = SCP (sameTypeSameShape p1 q1) (sameTypeSameShape p2 q2)
 sameTypeSameShape p@(UP nm) (UP nm1) = SUP
-sameTypeSameShape _ _  = absurd (the Void (believe_me ()))
+-- sameTypeSameShape _ _  = absurd (the Void (believe_me ()))
 
 export 
 flatT: (p: TPort a) -> (q: TPort a) 

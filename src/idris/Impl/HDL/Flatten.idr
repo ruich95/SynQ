@@ -126,7 +126,7 @@ record FlattenNetList where
 
 flatLPorts: (1 _: LPort s) -> !* (List AtomicPortAssign)
 flatLPorts (MkLP prf (MkBang lpIn) (MkBang lpOut)) 
-  = MkBang ((flatPortAssign . fromTPA) $ TPA lpIn lpOut)
+  = MkBang ((flatPortAssign . fromTPA') $ TPA lpIn lpOut)
   
 public export
 flatNetList: (1 _: NetList s a b) -> (!* FlattenNetList)

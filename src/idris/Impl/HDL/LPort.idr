@@ -64,7 +64,7 @@ seqLP: (1 _: LPort s) -> (1 _: LPort s)
 seqLP (MkLP prf2 (MkBang lpIn2) (MkBang lpOut2)) 
       (MkLP prf1 lpIn1 (MkBang lpOut1)) 
   = let teq = sameShapeTrans prf2 prf1
-        pa = fromTPA $ TPA lpIn2 $ rewrite teq in lpOut1
+        pa = fromTPA' $ TPA lpIn2 $ rewrite teq in lpOut1
         o2 = MkBang $ rewrite sym $ teq in lpOut2
     in MkLP prf1 lpIn1 o2 # pa
 

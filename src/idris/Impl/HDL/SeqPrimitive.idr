@@ -31,7 +31,7 @@ Reg a Combinational Sequential where
        pure $ let p = comb.oPort 
               in fromComb ({oPort := (UP UN)} comb)
                           (MkLP similar 
-                                (MkBang $ UP UN) 
+                                (MkBang $ genUnKnown aIsSig) --(MkBang $ UP UN) 
                                 (MkBang p))
   get = MkSeq $ 
     do (MkBang p) <- LST2 
@@ -72,6 +72,6 @@ where
        pure $ let p = comb.oPort 
               in fromComb ({oPort := (UP UN)} comb) -- emptyCNL 
                           (MkLP similar 
-                                (MkBang $ UP UN) 
+                                (MkBang $ genUnKnown aIsSig) --(MkBang $ UP UN) 
                                 (MkBang p))
   

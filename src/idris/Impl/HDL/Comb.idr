@@ -55,14 +55,14 @@ Comb Combinational where
     $ do x' <- genComb x
          pure $ let p = case x'.oPort of 
                           (CP p1 p2) => p1
-                          (UP nm) => (UP nm)
+                          -- (UP nm) => (UP nm)
                 in {oPort := p} x'
                 
   proj2 x = MkComb 
     $ do x' <- genComb x
          pure $ let p = case x'.oPort of 
                           (CP p1 p2) => p2
-                          (UP nm) => (UP nm)
+                          -- (UP nm) => (UP nm)
                 in {oPort := p} x'
   
   unit = MkComb $ pure emptyCNL
