@@ -4,6 +4,8 @@ import Data.Linear
 
 %hide Data.Linear.Interface.seq
 %hide Prelude.(>>=)
+%hide LState.(>>=)
+%hide Prelude.(=<<)
 %hide Prelude.pure
 
 RepeatSt: Nat -> (s: Type) -> Type
@@ -38,91 +40,103 @@ dropLast {n = (S (S k))} x =
   let _ = repeatSig (S k) aIsSig
   in prod (proj1 x) (dropLast $ proj2 x)
 
-sInPOut: {0 s: _} -> {0 a:_} -> {n: Nat} 
-  -> (Seq comb seq, Reg (Repeat n a) comb seq, Primitive comb)
-  => {auto sIsSt: St s}
-  -> {auto aIsSig: Sig a} 
-  -> {auto similar: SameShape a s}
-  -> (dat: comb () a)
-  -> (en:  comb () (BitVec 1))
-  -> seq (RepeatSt n s) () (Repeat n a)
-sInPOut dat en = 
-  let sigOut: Sig (Repeat n a) = repeatSig n aIsSig
-      stSt:  St (RepeatSt n s) = repeatStIsSt {sIsSt=sIsSt} {n=n}
-      similar': SameShape (Repeat n a) (RepeatSt n s)
-        = sameShape
-  in do pre <- get
-        update <- pure $ case n of
-                           0         => pre
-                           (S 0)     => dat
-                           (S (S k)) => prod {bIsSig=repeatSig (S k) aIsSig} 
-                                             dat (dropLast pre)
-        nxt <- pure $ if_ en update pre
-        pure pre
-        
-record SeqInParOut 
-  (n: Nat) (0 a: Type) 
-  (0 comb: Type -> Type -> Type) 
-  (0 seq: Type -> Type -> Type -> Type) where
-  constructor MkSIPO
-  1 view: {auto sIsSt: St s}
-       -> {auto aIsSig: Sig a} 
-       -> {auto similar: SameShape a s}
-       -> seq (RepeatSt n s) () (Repeat n a)
-       
-  1 read: {auto sIsSt: St s}
-       -> {auto aIsSig: Sig a} 
-       -> {auto similar: SameShape a s}
-       -> (dat: comb () a)
-       -> (en:  comb () (BitVec 1))
-       -> seq (RepeatSt n s) () ()
-
-mkSeqInParOut: {0 a:_} -> {0 s:_} -> {n: Nat} 
-  -> (Seq comb seq, Primitive comb)
-  => {auto aIsSig: Sig a} 
-  -> {auto sIsSt: St s}
-  -> {auto similar: SameShape a s}
-  -> (1 reg: Reg (Repeat n a) comb seq)
-  -> SeqInParOut n a comb seq
-mkSeqInParOut (MkReg get set) = 
-  let oSig = repeatSig n aIsSig
-      stSt: St (RepeatSt n s) = repeatStIsSt {sIsSt=sIsSt} {n=n}
-      samilar: SameShape (Repeat n a) (RepeatSt n s) = sameShape
-      view: seq (RepeatSt n s) () (Repeat n a)
-          = get 
-            
-      read: comb () a
-         -> comb () (BitVec 1)
-         -> seq (RepeatSt n s) () ()
-         = \dat => \en => do pre <- view 
-                             update <- pure $ case n of
-                                                0         => pre
-                                                (S 0)     => dat
-                                                (S (S k)) => prod {bIsSig=repeatSig (S k) aIsSig} 
-                                                                  dat (dropLast pre)
-                             nxt <- pure $ if_ en update pre
-                             set nxt
-  in MkSIPO view read
-  
-
 %hint
 lteSucc: (n:Nat) -> LTE n (S n)
 lteSucc 0 = LTEZero
 lteSucc (S k) = LTESucc (lteSucc k)
 
-%ambiguity_depth 8
 consumeCtrl: {cWidth: _} 
-  -> (Seq comb seq, Primitive comb)
+  -> (Comb comb, Primitive comb)
   => (n: Nat)
-  -> (1 count: Reg (BitVec cWidth) comb seq)
+  -> (curCount: comb () (BitVec cWidth))
   -> (vaild: comb () (BitVec 1))
-  -> (update: comb () (BitVec cWidth) -> comb () (BitVec cWidth)) 
-  -> seq (!* BitVec cWidth) () (BitVec 1)
-consumeCtrl n (MkReg get set) vaild update = 
-  do curCount <- get
-     capicity <- pure $ CombPrimitive.const (BV {n=cWidth} (cast n))
-     hasSpace <- pure $ (curCount `ltu` capicity)
-     nxtCount <- pure $ update $ mux21 hasSpace (lower' cWidth $ add curCount (const $ BV 1))
-                                                curCount
-     _ <- set nxtCount
-     pure hasSpace
+  -> comb () (BitVec cWidth, BitVec 1) -- nxtCount, en
+consumeCtrl n curCount vaild = 
+  let maxCount = const (BV {n=cWidth} (cast $ minus n 1))
+      consume  = (curCount `ltu` maxCount) `and` vaild
+      nxtCount = mux21 consume 
+                       (lower' cWidth $ add curCount (const $ BV 1))
+                       curCount
+  in prod nxtCount consume
+
+produceCtrl: {cWidth: _} 
+  -> (Comb comb, Primitive comb)
+  => (curCount: comb () (BitVec cWidth))
+  -> (ready   : comb () (BitVec 1))
+  -> (nxtCount': comb () (BitVec cWidth))
+  -> comb () (BitVec cWidth, BitVec 1) -- nxtCount, valid
+produceCtrl curCount ready nxtCount' = 
+  let produce  = (not $ curCount `eq` (const $ BV 0)) `and` (ready)
+      nxtCount = mux21 produce 
+                       (lower' cWidth $ add nxtCount' (not $ const $ BV 0))
+                       nxtCount'
+  in prod nxtCount produce
+
+sel: {cWidth: _} -> (Comb comb, Primitive comb)
+  => {n: Nat}
+  -> {auto aIsSig: Sig a}
+  -> (idx: comb () (BitVec cWidth))
+  -> (dat: comb () (Repeat n a))
+  -> comb () a
+  
+%ambiguity_depth 8
+fifo': (Seq comb seq, Primitive comb)
+  => {cWidth: _} -> {0 s:_} -> {n: Nat} 
+  -> {0 a:_} -> {auto aIsSig: Sig a} 
+  -> {auto sIsSt: St s}
+  -> {auto similar: SameShape a s}
+  -> (1 reg: Reg (BitVec cWidth, Repeat n a) comb seq)
+  -> (dat   : comb () a)
+  -> (validI: comb () (BitVec 1))
+  -> (ready : comb () (BitVec 1))
+  -> seq (LPair (!* BitVec cWidth) (RepeatSt n s))
+         () (BitVec 1, BitVec 1, a) --(readyO, validO, oData)
+fifo' (MkReg get set) dat validI ready = 
+  let pSig0: Sig (Repeat n a) = repeatSig n aIsSig
+      pSig1: Sig (BitVec cWidth, Repeat n a) = P BV pSig0
+      pSt0: St (RepeatSt n s) = repeatStIsSt 
+      pSt1: St (LPair (!* BitVec cWidth) (RepeatSt n s)) = LP LV pSt0
+      pSame0: SameShape (Repeat n a) (RepeatSt n s)
+        = sameShape
+      pSame1: SameShape (BitVec cWidth, Repeat n a) (LPair ((!*) (BitVec cWidth)) (RepeatSt n s)) 
+        = P BV pSame0
+  in do curSt      <- get
+        let curCount = proj1 curSt
+            curMemSt = proj2 curSt
+        consumeSig <- pure $ consumeCtrl n curCount validI
+        let (nxtCount', readyO) = (proj1 consumeSig, proj2 consumeSig)
+        produceSig <- pure $ produceCtrl curCount ready nxtCount'
+        let (nxtCount, validO) = (proj1 produceSig, proj2 produceSig)
+        out        <- pure $ sel (lower' cWidth $ add curCount (not $ const $ BV 0))
+                                 curMemSt
+        update     <- pure $ case n of 
+                               0         => unit
+                               (S 0)     => dat
+                               (S (S k)) => prod {bIsSig=repeatSig (S k) aIsSig} 
+                                                 dat (dropLast curMemSt)
+        _          <- set $ prod nxtCount (if_ readyO update curMemSt)
+        pure $ prod readyO (prod validO out)
+
+fifo: (Seq comb seq, Primitive comb)
+  => {cWidth: _} -> {0 s:_} -> {n: Nat} 
+  -> {0 a:_} -> {auto aIsSig: Sig a} 
+  -> {auto sIsSt: St s}
+  -> {auto similar: SameShape a s}
+  -> (1 reg: Reg (BitVec cWidth, Repeat n a) comb seq)
+  -> seq (LPair (!* BitVec cWidth) (RepeatSt n s))
+         (BitVec 1, BitVec 1, a) -- (readyI, validI, iData)
+         (BitVec 1, BitVec 1, a) -- (readyO, validO, oData)
+fifo reg = 
+  let pSig0: Sig (Repeat n a) = repeatSig n aIsSig
+      pSig1: Sig (BitVec cWidth, Repeat n a) = P BV pSig0
+      pSt0: St (RepeatSt n s) = repeatStIsSt 
+      pSt1: St (LPair (!* BitVec cWidth) (RepeatSt n s)) = LP LV pSt0
+      pSame0: SameShape (Repeat n a) (RepeatSt n s)
+        = sameShape
+      pSame1: SameShape (BitVec cWidth, Repeat n a) (LPair ((!*) (BitVec cWidth)) (RepeatSt n s)) 
+        = P BV pSame0
+  in abst $ \iSig => 
+       let readyI = proj1 iSig 
+           validI = proj1 $ proj2 iSig 
+           dat    = proj2 $ proj2 iSig
+       in fifo' reg dat validI readyI
