@@ -6,7 +6,7 @@ import Data.Linear
 %hide Prelude.(>>=)
 %hide Prelude.pure
 
-RepeatSt: Nat -> (s: Type) -> {auto sIsSt: St s} -> Type
+RepeatSt: Nat -> (s: Type) -> Type
 RepeatSt 0 s = ()
 RepeatSt (S 0) s = s
 RepeatSt (S (S k)) s = LPair s (RepeatSt (S k) s)
@@ -63,12 +63,12 @@ sInPOut dat en =
 record SeqInParOut 
   (n: Nat) (0 a: Type) 
   (0 comb: Type -> Type -> Type) 
-  (0 seq: Type -> Type -> Type -> Type)where
+  (0 seq: Type -> Type -> Type -> Type) where
   constructor MkSIPO
   1 view: {auto sIsSt: St s}
        -> {auto aIsSig: Sig a} 
        -> {auto similar: SameShape a s}
-       -> seq (RepeatSt n s {sIsSt= sIsSt}) () (Repeat n a)
+       -> seq (RepeatSt n s) () (Repeat n a)
        
   1 read: {auto sIsSt: St s}
        -> {auto aIsSig: Sig a} 
@@ -77,17 +77,52 @@ record SeqInParOut
        -> (en:  comb () (BitVec 1))
        -> seq (RepeatSt n s) () ()
 
-mkSeqInParOut: {0 s:_} -> {0 a:_} -> {n: Nat} 
+mkSeqInParOut: {0 a:_} -> {0 s:_} -> {n: Nat} 
   -> (Seq comb seq, Primitive comb)
-  => {auto aIsSig: Sig a}
-  -> {auto sIsSt': St s}
+  => {auto aIsSig: Sig a} 
+  -> {auto sIsSt: St s}
   -> {auto similar: SameShape a s}
   -> (1 reg: Reg (Repeat n a) comb seq)
   -> SeqInParOut n a comb seq
 mkSeqInParOut (MkReg get set) = 
-  let similar': SameShape (Repeat n a) (RepeatSt n s)
-        = sameShape
-      sigOut: Sig (Repeat n a) = repeatSig n aIsSig
-      stSt:  St (RepeatSt n s) = repeatStIsSt {sIsSt=sIsSt'} {n=n}
-      get' = get {s= RepeatSt n s}
-  in MkSIPO {s=s} get' ?rhs3
+  let oSig = repeatSig n aIsSig
+      stSt: St (RepeatSt n s) = repeatStIsSt {sIsSt=sIsSt} {n=n}
+      samilar: SameShape (Repeat n a) (RepeatSt n s) = sameShape
+      view: seq (RepeatSt n s) () (Repeat n a)
+          = get 
+            
+      read: comb () a
+         -> comb () (BitVec 1)
+         -> seq (RepeatSt n s) () ()
+         = \dat => \en => do pre <- view 
+                             update <- pure $ case n of
+                                                0         => pre
+                                                (S 0)     => dat
+                                                (S (S k)) => prod {bIsSig=repeatSig (S k) aIsSig} 
+                                                                  dat (dropLast pre)
+                             nxt <- pure $ if_ en update pre
+                             set nxt
+  in MkSIPO view read
+  
+
+%hint
+lteSucc: (n:Nat) -> LTE n (S n)
+lteSucc 0 = LTEZero
+lteSucc (S k) = LTESucc (lteSucc k)
+
+%ambiguity_depth 8
+consumeCtrl: {cWidth: _} 
+  -> (Seq comb seq, Primitive comb)
+  => (n: Nat)
+  -> (1 count: Reg (BitVec cWidth) comb seq)
+  -> (vaild: comb () (BitVec 1))
+  -> (update: comb () (BitVec cWidth) -> comb () (BitVec cWidth)) 
+  -> seq (!* BitVec cWidth) () (BitVec 1)
+consumeCtrl n (MkReg get set) vaild update = 
+  do curCount <- get
+     capicity <- pure $ CombPrimitive.const (BV {n=cWidth} (cast n))
+     hasSpace <- pure $ (curCount `ltu` capicity)
+     nxtCount <- pure $ update $ mux21 hasSpace (lower' cWidth $ add curCount (const $ BV 1))
+                                                curCount
+     _ <- set nxtCount
+     pure hasSpace

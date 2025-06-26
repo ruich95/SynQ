@@ -22,19 +22,19 @@ export
 infixr 9 <>
 
 public export
-lower: {comb:_} -> {n:_} -> (Comb comb, Primitive comb)
+lower: {n:_} -> (Comb comb, Primitive comb)
     => (m: Nat) -> {auto prf: LTE m n} -> comb (BitVec n) (BitVec m)
 lower m = lam $ \x => rewrite sym $ minusZeroRight m in slice 0 m x
 
 public export
-lower': {comb:_} -> {n:_} -> (Comb comb, Primitive comb)
+lower': {n:_} -> (Comb comb, Primitive comb)
     => (m: Nat) -> {auto prf: LTE m n} 
     -> comb () (BitVec n) ->  comb () (BitVec m)
 lower' m x = rewrite sym $ minusZeroRight m in slice 0 m x
 
 -- Sequential Composition
 public export
-(<<): {comb:_} -> (Comb comb)
+(<<): (Comb comb)
    => {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
    -> {auto cIsSig: Sig c}
    -> comb b c -> comb a b -> comb a c
