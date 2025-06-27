@@ -9,9 +9,11 @@ import Examples.RV32I.RegFile
 import Examples.RV32I.Utils
 
 import Data.Bits
+-- import System.File
 
 %hide Prelude.concat
 %hide Prelude.(=<<)
+%hide LState.(=<<)
 %hide Prelude.pure
 -- %hide Linear.seq
 
