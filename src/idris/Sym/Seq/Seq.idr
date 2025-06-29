@@ -31,3 +31,8 @@ interface Comb comb
       -> {auto s2IsState: St s2} 
       -> (1 _: seq s2 b c) -> (1 _: seq s1 a b)
       -> seq (LPair s1 s2) a c
+      
+  swap: {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
+     -> {auto s1IsState: St s1} -> {auto s2IsState: St s2} 
+     -> (1 _: seq (LPair s1 s2) a b)
+     -> seq (LPair s2 s1) a b

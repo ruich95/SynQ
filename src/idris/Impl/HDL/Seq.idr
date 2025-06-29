@@ -62,3 +62,17 @@ Seq Combinational Sequential where
          pure $ let comb = comb2 . comb1 
                     lp = lp1 `parLP` lp2
                 in fromComb comb lp
+                
+  swap (MkSeq f) = MkSeq 
+    $ LST2 $ \c => 
+        let LST2 f' = f 
+            (nl # c') = f' c 
+        in ((let ((MkLP prf lpIn lpOut) # comb) = unpackSeqNL nl 
+                 P prf1 prf2 = prf
+                 MkBang (CP lpIn1  lpIn2)  = lpIn
+                 MkBang (CP lpOut1 lpOut2) = lpOut
+                 lp' = MkLP (P prf2 prf1) 
+                            (MkBang (CP lpIn2  lpIn1)) 
+                            (MkBang (CP lpOut2 lpOut1))
+             in fromComb comb lp') 
+           # c') -- ((pure unpackSeqNL) <*> g) 

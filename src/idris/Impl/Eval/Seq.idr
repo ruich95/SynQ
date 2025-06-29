@@ -22,3 +22,8 @@ Seq Combinational Sequential where
   
   (<<<) (MkSeq g) (MkSeq f) = MkSeq (LState.(<<<) g f)
   
+  swap (MkSeq f) = MkSeq $ \xin => LST $ \(st2 # st1) => 
+    let LST f' = (f xin) 
+        (st1 # st2) # o = f' (st1 # st2)
+     in (st2 # st1) # o
+  

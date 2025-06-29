@@ -16,7 +16,7 @@ data St: Type -> Type where
 public export
 data SameShape: Type -> Type -> Type where
   U: SameShape () ()
-  BV: SameShape a (!* a)
+  BV: SameShape (BitVec n) (!* BitVec n)
   P:  (prfa: SameShape a b)
    -> (prfb: SameShape c d)
    -> SameShape (a, c) (LPair b d)
@@ -29,6 +29,16 @@ sameShapeTrans BV BV = Refl
 sameShapeTrans (P p11 p12) (P p21 p22) = 
   let p1' = sameShapeTrans p11 p21 
       p2' = sameShapeTrans p12 p22 
+  in rewrite p1' in rewrite p2' in Refl
+
+export
+sameShapeTransS: (p1: SameShape a s) -> (p2: SameShape a t) 
+             -> s = t
+sameShapeTransS U U = Refl
+sameShapeTransS BV BV = Refl
+sameShapeTransS (P p11 p12) (P p21 p22) = 
+  let p1' = sameShapeTransS p11 p21 
+      p2' = sameShapeTransS p12 p22 
   in rewrite p1' in rewrite p2' in Refl
 
 

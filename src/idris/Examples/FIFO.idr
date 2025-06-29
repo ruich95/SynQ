@@ -47,46 +47,44 @@ lteSucc: (n:Nat) -> LTE n (S n)
 lteSucc 0 = LTEZero
 lteSucc (S k) = LTESucc (lteSucc k)
 
-consumeCtrl: {cWidth: _} 
-  -> (Comb comb, Primitive comb)
-  => (n: Nat)
-  -> (curCount: comb () (BitVec cWidth))
-  -> (vaild: comb () (BitVec 1))
-  -> comb () (BitVec cWidth, BitVec 1, BitVec 1) -- nxtCount, en, ready
-consumeCtrl n curCount vaild = 
-  let maxCount = const (BV {n=cWidth} (cast n))
-      consume  = (curCount `ltu` maxCount) `and` vaild
-      nxtCount = mux21 consume 
-                       (lower' cWidth $ add curCount (const $ BV 1))
-                       curCount
-  in prod nxtCount $ prod consume (curCount `ltu` maxCount)
+record 
+  AxiSFIFO {0 s:Type} (n: Nat) (0 a: Type) (cntWidth: Nat) 
+           (0 comb: Type -> Type -> Type)
+           (0 seq: Type -> Type -> Type -> Type) where
+  constructor MkAxiSFIFO
+  1 fifoForward: {auto aIsSig: Sig a} 
+      -> {auto sIsSt: St s}
+      -> {auto similar: SameShape a s}
+      -> (dat: comb () a) 
+      -> (rst_n : comb () (BitVec 1))
+      -> seq (LPair (!* BitVec cntWidth) (RepeatSt n s)) () ((BitVec 1, a), BitVec 1) 
+                                                         -- (validO, dataO, readyO)
+           
+  1 fifoBackward: {auto aIsSig: Sig a} 
+      -> {auto sIsSt: St s}
+      -> {auto similar: SameShape a s}
+      -> (dat: comb () a) 
+      -> (validI: comb () (BitVec 1)) 
+      -> (rst_n : comb () (BitVec 1)) 
+      -> (readyI: comb () (BitVec 1))
+      -> seq (LPair (!* BitVec cntWidth) (RepeatSt n s)) () ()
 
-produceCtrl: {cWidth: _} 
-  -> (Comb comb, Primitive comb)
-  => (curCount: comb () (BitVec cWidth))
-  -> (ready   : comb () (BitVec 1))
-  -- -> (nxtCount': comb () (BitVec cWidth))
-  -> comb () (BitVec cWidth, BitVec 1) -- nxtCount, valid
-produceCtrl curCount ready = 
-  let produce  = (not $ curCount `eq` (const $ BV 0)) `and` (ready)
-      nxtCount = mux21 produce 
-                       (lower' cWidth $ add curCount (not $ const $ BV 0))
-                       curCount
-  in prod nxtCount (not $ curCount `eq` (const $ BV 0))
-      
-fifo': (Seq comb seq, Primitive comb)
-  => {cWidth: _} -> {0 s:_} -> {n: Nat} 
+
+fifo': forall s. (Seq comb seq, Primitive comb)
+  => {cWidth: _} -> {n: Nat} 
   -> {0 a:_} -> {auto aIsSig: Sig a} 
   -> {auto sIsSt: St s}
   -> {auto similar: SameShape a s}
   -> (1 reg: Reg (BitVec cWidth, Repeat n a) comb seq)
-  -> (dat   : comb () a)
-  -> (validI: comb () (BitVec 1))
-  -> (ready : comb () (BitVec 1))
-  -> (rst_n : comb () (BitVec 1))
-  -> seq (LPair (!* BitVec cWidth) (RepeatSt n s))
-         () (BitVec 1, BitVec 1, a) --(readyO, validO, oData)
-fifo' (MkReg get set) dat validI ready rst_n = 
+  -> LPair ((dat: comb () a) 
+         -> (validI: comb () (BitVec 1)) 
+         -> (rst_n : comb () (BitVec 1)) 
+         -> (readyI: comb () (BitVec 1))
+         -> seq (LPair (!* BitVec cWidth) (RepeatSt n s)) () ())
+        ((dat: comb () a) -> (rst_n : comb () (BitVec 1)) 
+         -> seq (LPair (!* BitVec cWidth) (RepeatSt n s)) () ((BitVec 1, a), BitVec 1)) 
+                                                           --(validO, dataO, readyO)
+fifo' (MkReg get set) = 
   let pSig0: Sig (Repeat n a) = repeatSig n aIsSig
       pSig1: Sig (BitVec cWidth, Repeat n a) = P BV pSig0
       pSt0: St (RepeatSt n s) = repeatStIsSt 
@@ -97,83 +95,119 @@ fifo' (MkReg get set) dat validI ready rst_n =
                         (LPair ((!*) (BitVec cWidth)) 
                         (RepeatSt n s)) 
         = P BV pSame0
-  in do curSt      <- get
-        let curCount = proj1 curSt
-            curMemSt = proj2 curSt
-        produceSig <- pure $ produceCtrl curCount ready -- nxtCount'
-        let nxtCount' = proj1 produceSig
-            validO   = proj2 produceSig
-        consumeSig <- pure $ consumeCtrl n nxtCount' validI
-        let nxtCount  = proj1 consumeSig
-            en        = proj1 $ proj2 consumeSig 
-            readyO    = proj2 $ proj2 consumeSig
-        out        <- pure $ sel (lower' cWidth $ add curCount (not $ const $ BV 0))
-                                 curMemSt
-                                 dat
-        update     <- pure $ case n of 
+  in (\dat => \validI => \rst_n => \readyI => 
+         do curSt      <- get
+            let curCount = proj1 curSt
+                curMemSt = proj2 curSt
+                produce  = (not $ curCount `eq` (const $ BV 0)) `and` (readyI)
+                nxtCount = mux21 produce 
+                                 (lower' cWidth $ add curCount (not $ const $ BV 0))
+                                 curCount
+                maxCount = const (BV {n=cWidth} (cast n))
+                en       = (curCount `ltu` maxCount) `and` validI
+                nxtCount = mux21 en
+                                 (lower' cWidth $ add nxtCount (const $ BV 1))
+                                 curCount       
+            update     <- pure $ case n of 
                                0         => unit
                                (S 0)     => dat
                                (S (S k)) => prod {bIsSig=repeatSig (S k) aIsSig} 
                                                  dat (dropLast curMemSt)
-        _          <- set $ prod (mux21 rst_n nxtCount (const $ BV 0)) 
-                                 (if_ en update curMemSt)
-        pure $ prod (readyO `and` rst_n) (prod (validO `and` rst_n) out)
+            set $ prod (mux21 rst_n nxtCount (const $ BV 0)) 
+                       (if_ en update curMemSt))
+   # (\dat => \rst_n => 
+        do curSt      <- get
+           let curCount = proj1 curSt
+               curMemSt = proj2 curSt
+               maxCount = const (BV {n=cWidth} (cast n))
+               readyO   = (curCount `ltu` maxCount)
+           out        <- pure $ sel (lower' cWidth $ add curCount (not $ const $ BV 0))
+                                    curMemSt
+                                    dat
+           validO     <- pure $ (not $ curCount `eq` (const $ BV 0))
+           pure $ prod (prod (rst_n `and` validO) out) (rst_n `and` readyO))
 
-fifo: (Seq comb seq, Primitive comb)
+mkFIFO: (Seq comb seq, Primitive comb)
   => {cWidth: _} -> {0 s:_} -> {n: Nat} 
   -> {0 a:_} -> {auto aIsSig: Sig a} 
   -> {auto sIsSt: St s}
   -> {auto similar: SameShape a s}
   -> (1 reg: Reg (BitVec cWidth, Repeat n a) comb seq)
-  -> seq (LPair (!* BitVec cWidth) (RepeatSt n s))
-         (BitVec 1, BitVec 1, a, BitVec 1) -- (readyI, validI, dataI, reset_n)
-         (BitVec 1, BitVec 1, a) -- (readyO, validO, data))
-fifo reg = 
-  let pSig0: Sig (Repeat n a) = repeatSig n aIsSig
-      pSig1: Sig (BitVec cWidth, Repeat n a) = P BV pSig0
-      pSt0: St (RepeatSt n s) = repeatStIsSt 
-      pSt1: St (LPair (!* BitVec cWidth) (RepeatSt n s)) = LP LV pSt0
-      pSame0: SameShape (Repeat n a) (RepeatSt n s)
-        = sameShape
-      pSame1: SameShape (BitVec cWidth, Repeat n a) (LPair ((!*) (BitVec cWidth)) (RepeatSt n s)) 
-        = P BV pSame0
-  in abst $ \iSig => 
-       let readyI = proj1 iSig 
-           validI = proj1 $ proj2 iSig 
-           dat    = proj1 $ proj2 $ proj2 iSig
-           rst_n  = proj2 $ proj2 $ proj2 iSig
-       in fifo' reg dat validI readyI rst_n
-       
--- fifo4: (Seq comb seq, Primitive comb)
---   => (1 reg: Reg (BitVec 2, Repeat 4 UInt8) comb seq)
---   -> seq (LPair (!* BitVec 2) (RepeatSt 4 (!* UInt8)))
---          (BitVec 1, BitVec 1, UInt8)
---          (BitVec 1, BitVec 1, UInt8)
--- fifo4 = fifo {n=4} {sIsSt= LV}
+  -> AxiSFIFO {s=s} n a cWidth comb seq
+mkFIFO reg = 
+  let (bwd # fwd) = fifo' {n=n} {sIsSt=sIsSt} reg
+  in MkAxiSFIFO fwd bwd
 
-fifo4: (BitVec 1, BitVec 1, UInt8, BitVec 1)
-    -> LState (LPair (!* BitVec 3) (RepeatSt 4 (!* UInt8)))
-              (BitVec 1, BitVec 1, UInt8)
-fifo4 = runSeq $ fifo {n=4} {sIsSt= LV} reg
+
+fifo4': (Seq comb seq, Primitive comb)
+ => (1 reg: Reg (BitVec 3, Repeat 4 UInt8) comb seq)
+ -> (LPair (seq (LPair (!* BitVec 3) (RepeatSt 4 (!* UInt8))) 
+                (UInt8, BitVec 1)  -- dataI rst_n
+                ((BitVec 1, UInt8), BitVec 1)) 
+           (seq (LPair (!* BitVec 3) (RepeatSt 4 (!* UInt8))) 
+                       ((BitVec 1, UInt8), BitVec 1, BitVec 1) -- validI dataI rst_n readyI
+                       ()))
+fifo4' reg = 
+  let MkAxiSFIFO fwd bwd = mkFIFO {s= (!* UInt8)} {a=UInt8} {n=4} reg 
+    
+  in (abst $ \xin => fwd (proj1 xin) (proj2 xin)) 
+   # (abst $ \xin  => 
+        let validI = proj1 $ proj1 xin 
+            dataI  = proj2 $ proj1 xin 
+            rst_n  = proj1 $ proj2 xin
+            readyI = proj2 $ proj2 xin
+        in bwd dataI validI rst_n readyI)
+
+fifo4: LPair ((UInt8, BitVec 1) 
+                -> LState (LPair (!* BitVec 3) (RepeatSt 4 (!* UInt8))) 
+                          ((BitVec 1, UInt8), BitVec 1))
+             (((BitVec 1, UInt8), BitVec 1, BitVec 1) 
+                -> LState (LPair (!* BitVec 3) (RepeatSt 4 (!* UInt8))) 
+                          ())
+fifo4 = let (fwd # bwd) = fifo4' Eval.SeqPrimitive.reg 
+        in (runSeq fwd # runSeq bwd)
+
+%unhide Prelude.(>>=)
+progFIFO4: (ini: LPair (!* BitVec 3) (RepeatSt 4 (!* UInt8)))
+        -> (read1: IO ((BitVec 1, UInt8), BitVec 1))    -- validI dataI rst_n
+        -> (read2: IO (BitVec 1)) -- readyI
+        -> IO () 
+progFIFO4 ini read1 read2 = 
+  let fwd # bwd = fifo4 
+  in do let (MkBang count # content) = ini
+            (MkBang p1 # (MkBang p2 # (MkBang p3 # MkBang p4))) = content
+        putStrLn "{\"state\": {\"count\": \"\{show count}\", \"content\": [\"\{show p1}\", \"\{show p2}\",\"\{show p3}\",\"\{show p4}\"]}}"
+        fflush stdout
+        ((validI, dataI), rst_n) <- read1 
+        let LST fwd = fwd (dataI, rst_n)
+            (st # ((validO, dataO), readyO)) = fwd ini
+        putStrLn "{\"valid\" : \"\{show validO}\", \"data\"  : \"\{show dataO}\", \"ready\" : \"\{show readyO}\"}"
+        fflush stdout
+        readyI <- read2
+        let LST bwd = bwd ((validI, dataI), rst_n, readyI)
+            (st # _) = bwd st
+        progFIFO4 st read1 read2
+        
+iniSt: LPair (!* BitVec 3) (RepeatSt 4 (!* UInt8))
+iniSt = (MkBang 0) # (MkBang 0 # (MkBang 0 # (MkBang 0 # MkBang 0)))
 
 %unhide Prelude.pure
-%unhide Prelude.(>>=)
+%ambiguity_depth 4
+read1: IO ((BitVec 1, UInt8), BitVec 1)
+read1 = do putStr "Current Input Valid?: \n"
+           fflush stdout
+           validI <- (pure $ BitVec.fromInteger . cast) <*> getLine
+           putStr "Current Input: \n"
+           fflush stdout
+           dataI <- (pure $ BitVec.fromInteger . cast) <*> getLine
+           putStr "Reset? (active low): \n"
+           fflush stdout
+           rst_n <- (pure $ BitVec.fromInteger . cast) <*> getLine
+           pure ((validI, dataI), rst_n)
 
-%ambiguity_depth 5
-readIn: IO (BitVec 1, BitVec 1, UInt8, BitVec 1)
-readIn = do putStr "Next Stg Ready?: \n"
-            fflush stdout
-            en <- (pure $ BitVec.fromInteger . cast) <*> getLine
-            putStr "Current Input Valid?: \n"
-            fflush stdout
-            inst <- (pure $ BitVec.fromInteger . cast) <*> getLine
-            putStr "Current Input: \n"
-            fflush stdout
-            pc <- (pure $ BitVec.fromInteger . cast) <*> getLine
-            putStr "Reset? (active low): \n"
-            fflush stdout
-            rst_n <- (pure $ BitVec.fromInteger . cast) <*> getLine
-            pure (en, inst, pc, rst_n)
+read2: IO (BitVec 1)
+read2 = do putStr "Next Stg Ready?: \n"
+           fflush stdout
+           (pure $ BitVec.fromInteger . cast) <*> getLine
 
-fifoProg: IO ()
-fifoProg = reactMealy readIn fifo4 (MkBang 0 # (MkBang 0 # (MkBang 0 # (MkBang 0 # MkBang 0))))
+
