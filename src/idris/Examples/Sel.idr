@@ -28,21 +28,31 @@ sel' {n = (S (S k))} count dat pre idx =
   in sel' {n=(S k)} (lower' cWidth $ add count (const $ BV 1)) (proj2 dat) pre' idx
 
 export
-sel: {cWidth: _} -> (Comb comb, Primitive comb)
+sel2: {cWidth: _} -> (Comb comb, Primitive comb)
   => {n: Nat}
   -> {auto aIsSig: Sig a}
   -> (idx: comb () (BitVec cWidth))
   -> (dat: comb () (Repeat n a))
   -> (otherwise: comb () a)
   -> comb () a
-sel {n = 0} idx dat otherwise = otherwise
-sel {n = (S k)} idx dat otherwise = sel' {n=k} (const $ BV 0) dat (\f => f idx) idx
+sel2 {n = 0} idx dat otherwise = otherwise
+sel2 {n = (S k)} idx dat otherwise = sel' {n=k} (const $ BV 0) dat (\f => f idx) idx
+
+export
+sel: {cWidth: _} -> (Comb comb, Primitive comb)
+  => {n: Nat}
+  -> {auto aIsSig: Sig a}
+  -> {auto prf: LTE 1 n}
+  -> (idx: comb () (BitVec cWidth))
+  -> (dat: comb () (Repeat n a))
+  -> comb () a
+sel {n = (S k)} {prf = (LTESucc x)} idx dat = 
+  sel' {n= k} (const $ BV 0) dat (\f => f idx) idx
 
 trySel: (Comb comb, Primitive comb) 
   => (idx: comb () (BitVec 3)) -> comb () UInt8
 trySel idx = sel {n=5} idx 
                   (prod (const $ BV {n=8} 3) (prod (const $ BV {n=8} 1) (prod (const $ BV {n=8} 4) (prod (const $ BV {n=8} 5) (const $ BV {n=8} 9))))) 
-                  (const 0)
-                  
+                                                      
 runSel: BitVec 3 -> IO ()
 runSel x = printLn $ show $ (runComb $ lam trySel) x

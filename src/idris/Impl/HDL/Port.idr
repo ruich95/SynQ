@@ -83,7 +83,41 @@ namespace TPort
     rhs: TPort a
   
   %name TPort p1, p2
-    
+  
+  public export
+  data SimpleTPort: (TPort a) -> Type where
+    IsSTP: SimpleTPort (SP _ _ _)
+  
+  lemma1: (m: Nat) -> (n: Nat) -> (m == n) = True -> m = n
+  lemma1 0 0 prf = Refl
+  lemma1 0 (S k) prf = absurd prf
+  lemma1 (S k) 0 prf = absurd prf
+  lemma1 (S k) (S j) prf = cong S (lemma1 k j prf)
+  
+  -- replace all occurance of p in pp with q
+  export
+  replaceTPortWith: (p: TPort a) -> (prfp: SimpleTPort p)
+    -> (q: TPort a) -> (prfq: SimpleTPort q) 
+    -> (pp: TPort b) -> TPort b
+  replaceTPortWith p@(SP nm1 len1 val1) IsSTP q@(SP _ _ _) IsSTP pp@(SP nm len val) with (len1 == len) proof prf
+    replaceTPortWith p@(SP nm1 len1 val1) IsSTP q@(SP _ _ _) IsSTP pp@(SP nm len val) | False = pp
+    replaceTPortWith p@(SP nm1 len1 val1) IsSTP q@(SP _ _ _) IsSTP pp@(SP nm len val) | True = 
+      let prf = lemma1 len1 len prf 
+      in case prf of 
+           Refl => if (nm1 == nm) && (val1 == val) 
+                   then q else pp
+  replaceTPortWith p@(SP _ _ _) IsSTP q@(SP _ _ _) IsSTP (CP p1 p2) = 
+    CP (replaceTPortWith p IsSTP q IsSTP p1) 
+       (replaceTPortWith p IsSTP q IsSTP p2) 
+  replaceTPortWith p@(SP _ _ _) IsSTP q@(SP _ _ _) IsSTP pp@(UP nm) = pp
+  
+  export
+  flatTP: (p: TPort a) -> (q: TPort a) 
+    -> List (b:Type ** (p':TPort b ** (q':TPort b ** (SimpleTPort p', SimpleTPort q'))))
+  flatTP p@(SP _ len _) q@(SP _ len _) = [((BitVec len) ** (p ** (q ** (IsSTP, IsSTP))))]
+  flatTP (CP p1 p2) (CP q1 q2) = flatTP p1 q1 ++ flatTP p2 q2
+  flatTP (UP _) (UP _) = []
+        
 export
 fromTP: TPort a -> Port
 fromTP (SP nm len val) = SP nm len val

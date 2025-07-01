@@ -51,6 +51,18 @@ replaceAllInnerPortCNL: (p: TPort c) -> (q: TPort c)
 replaceAllInnerPortCNL p q nl = 
   let pairs = flatT p q 
   in replaceAllInnerPortCNL' pairs nl
+  
+replaceTPort': List (b:Type ** (p':TPort b ** (q':TPort b ** (SimpleTPort p', SimpleTPort q'))))
+  -> (p: TPort a) -> TPort a
+replaceTPort' [] p = p
+replaceTPort' ((b ** (p' ** (q' ** (prfp, prfq)))) :: xs) p = 
+  replaceTPort' xs (replaceTPortWith p' prfp q' prfq p)
+  
+replaceTPort: (p: TPort b) -> (q: TPort b)
+  -> (pp: TPort a) -> TPort a
+replaceTPort p q pp = 
+  let pairs = flatTP p q 
+  in replaceTPort' pairs pp 
 
 public export infixr 9 <<=
 
@@ -58,7 +70,8 @@ export
 (<<=): CombNL b c -> CombNL a b -> CombNL a c
 (<<=) g f = 
   let g' = replaceAllInnerPortCNL g.iPort f.oPort g
-  in MkCNL f.iPort g.oPort 
+      oP = replaceTPort g.iPort f.oPort g.oPort
+  in MkCNL f.iPort oP -- g.oPort 
            (f.assignedPorts ++ g'.assignedPorts)
            (f.instModules ++ g'.instModules)
 
