@@ -5,10 +5,11 @@ import Data.Linear
 import Examples.Sel
 import System.File
 import Data.List
+import Data.Vect
 import Language.Reflection
 
 %hide Data.Linear.Interface.seq
-%hide Prelude.(>>=)
+-- %hide Prelude.(>>=)
 %hide LState.(>>=)
 %hide Prelude.(=<<)
 -- %hide Prelude.pure
@@ -45,17 +46,106 @@ dropLast {n = (S (S k))} x =
   let _ = repeatSig (S k) aIsSig
   in prod (proj1 x) (dropLast $ proj2 x)
 
+%hide SeqLib.(>>=)
 %hint
 lteSucc: (n:Nat) -> LTE n (S n)
 lteSucc 0 = LTEZero
 lteSucc (S k) = LTESucc (lteSucc k)
 
-genIf: (Comb comb, Primitive comb) 
-  => {auto aIsSig: Sig a}
-  -> Elab (comb () (BitVec 1) -> comb () a -> comb () a)
-genIf {aIsSig = U} = pure $ \_ => \_ => unit
-genIf {aIsSig = (P x y)} = ?genIf'_rhs_1
-genIf {aIsSig = BV} = ?genIf'_rhs_2
+-- genIf: (Comb comb, Primitive comb) 
+--   => {auto aIsSig: Sig a}
+--   -> Elab (comb () (BitVec 1) -> comb () a -> comb () a -> comb () a)
+-- genIf {aIsSig = U} = 
+--   pure $ \_ => \_ => \_ => unit
+-- genIf {aIsSig = (P x y)} = 
+--   lambda _ $ \b => lambda _ $ \x1 => lambda _ $ \x2 => 
+--     do let x11 = proj1 x1
+--            x12 = proj2 x1
+--            x21 = proj1 x2
+--            x22 = proj2 x2
+--        f1 <- genIf {aIsSig = x} <*> (pure b) 
+--        f2 <- genIf {aIsSig = y} <*> (pure b) 
+--        pure $ prod (f1 x11 x21) (f2 x12 x22)
+-- genIf {aIsSig = BV} = 
+--   pure $ \b => \x => \y => mux21 b x y
+
+genSel': (Comb comb, Primitive comb) 
+  => {n: Nat} -> {idxWidth: Nat} -> {dataWidth: Nat}
+  -> {auto notEmpty: LTE 1 n}
+  -> (ks: (Vect n $ BitVec idxWidth))
+  -> Elab (comb () (BitVec idxWidth) -> comb () (Repeat n $ BitVec dataWidth) 
+             -> comb () (BitVec dataWidth))
+genSel' {n = (S 0)} {notEmpty = (LTESucc x)} ks = 
+  lambda _ $ \_ => lambda _ $ \d => pure d
+genSel' {n = (S (S 0))} {notEmpty = (LTESucc x)} (key::_) = 
+  lambda _ $ \idx => lambda _ $ \vs => 
+    Prelude.pure $ mux21 (eq idx (const key)) 
+                         (proj1 vs)
+                         (proj2 vs) -- ?genSel_rhs_3
+genSel' {n = (S (S (S k)))} {notEmpty = (LTESucc x)} (key::ks) = 
+  lambda _ $ \idx => lambda _ $ \vs => 
+    let p1 = repeatSig (S k) (BV {n=idxWidth})
+        p2 = repeatSig (S k) (BV {n=dataWidth})
+        val = proj1 vs 
+        vs  = proj2 vs
+    in do sel' <- genSel' {comb=comb} {idxWidth=idxWidth} {dataWidth=dataWidth} {n= S $ S k} ks
+          pure $ mux21 (eq idx $ const key) val 
+                       (sel' idx vs)
+
+unZip: (Comb comb, Primitive comb) 
+  => {n: Nat} 
+  -> {auto sig: Sig (a, b)}
+  -> Elab ((comb () $ Repeat n (a, b)) 
+  -> ((comb () $ Repeat n a), (comb () $ Repeat n b)))
+unZip {n = 0} = pure $ \_ => (unit, unit)
+unZip {n = (S 0)} {sig=P x y} = pure $ \x => (proj1 x, proj2 x)
+unZip {n = (S (S k))} {sig=P p1 p2} = 
+  lambda _ $ \xs => 
+    let p0 = repeatSig (S k) (P p1 p2)
+        prf1 = repeatSig (S k) p1
+        prf2 = repeatSig (S k) p2
+        x  = proj1 xs
+        xs = proj2 xs
+    in do unzip <- unZip {comb=comb} {n=S k} {sig=P p1 p2}
+          let (xs1, xs2) = unzip xs
+              t1 = (prod (proj1 x) xs1) 
+              t2 = (prod (proj2 x) xs2)
+          pure (t1, t2)
+
+genSel: (Comb comb, Primitive comb) 
+  => {n: Nat} -> {idxWidth: Nat} 
+  -> {auto aIsSig: Sig a}
+  -> {auto notEmpty: LTE 1 n}
+  -> (ks: (Vect n $ BitVec idxWidth))
+  -> Elab (comb () (BitVec idxWidth) -> comb () (Repeat n a)
+             -> comb () a)
+genSel {aIsSig = U} ks = pure $ \_ => \_ => unit
+genSel {aIsSig = (P x y)} ks = 
+ lambda _ $ \idx =>lambda _ $ \vs => 
+   do unzip <- unZip {comb = comb} {n}
+      (vs1, vs2) <- Prelude.pure $ unzip vs
+      f1 <- genSel {n=n} {idxWidth=idxWidth} ks <*> (pure idx) 
+      f2 <- genSel {n=n} {idxWidth=idxWidth} ks <*> (pure idx) 
+      pure $ prod (f1 vs1) (f2 vs2)
+genSel {aIsSig = BV {n=m}} ks = genSel' ks
+
+SigTy: (n:Nat) -> Type
+SigTy n = (BitVec n, BitVec 1)
+
+keys: (Vect 4 $ BitVec 3)
+keys = [BV 0, BV 1, BV 2, BV 3]
+
+%language ElabReflection
+sel4: (Comb comb, Primitive comb) 
+  => comb () (BitVec 3) -> comb () (Repeat 4 $ SigTy 32)
+  -> comb () (SigTy 32)
+sel4 = %runElab genSel {n=4} {idxWidth=3} keys
+
+-- ifSig: (Comb comb, Primitive comb) 
+--   => (comb () (BitVec 1) 
+--   -> (comb () (SigTy 32)) -> (comb () (SigTy 32)) -> comb () (SigTy 32))
+-- ifSig = %runElab genIf --{aIsSig = P BV BV}
+
 
 -- mkFIFO: forall s. (Seq comb seq, Primitive comb)
 --   => {cWidth: _} -> {n: Nat} 
