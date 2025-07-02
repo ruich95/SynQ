@@ -36,7 +36,7 @@ runMealyR (MkSeq f) st (x :: xs) =
       ys        = snd (runMealyR (MkSeq f) st' xs)
   in (final_st , y::ys)
 
-
+public export
 runMealy': (Sequential s a b) 
   -> (s, List b) -> List a -> (s, List b)
 runMealy' sys (st, prev) [] = (st, prev)

@@ -7,6 +7,7 @@ lteSucc: (n:Nat) -> LTE n (S n)
 lteSucc 0 = LTEZero
 lteSucc (S k) = LTESucc (lteSucc k)
 
+-- %spec n, dat, cWidth
 sel': {cWidth: _} -> (Comb comb, Primitive comb)
   => {n: Nat}
   -> {auto aIsSig: Sig a}
@@ -39,6 +40,7 @@ sel2 {n = 0} idx dat otherwise = otherwise
 sel2 {n = (S k)} idx dat otherwise = sel' {n=k} (const $ BV 0) dat (\f => f idx) idx
 
 export
+-- %spec dat, n
 sel: {cWidth: _} -> (Comb comb, Primitive comb)
   => {n: Nat}
   -> {auto aIsSig: Sig a}
@@ -52,7 +54,12 @@ sel {n = (S k)} {prf = (LTESucc x)} idx dat =
 trySel: (Comb comb, Primitive comb) 
   => (idx: comb () (BitVec 3)) -> comb () UInt8
 trySel idx = sel {n=5} idx 
-                  (prod (const $ BV {n=8} 3) (prod (const $ BV {n=8} 1) (prod (const $ BV {n=8} 4) (prod (const $ BV {n=8} 5) (const $ BV {n=8} 9))))) 
+                  (prod (const $ BV {n=8} 3) 
+                  (prod (const $ BV {n=8} 1) 
+                  (prod (const $ BV {n=8} 4) 
+                  (prod (const $ BV {n=8} 5) 
+                        (const $ BV {n=8} 9))))) 
                                                       
-runSel: BitVec 3 -> IO ()
-runSel x = printLn $ show $ (runComb $ lam trySel) x
+runSel: BitVec 3 -> UInt8
+runSel x = (runComb $ lam trySel) x
+

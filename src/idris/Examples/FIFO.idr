@@ -186,9 +186,13 @@ zipList [] ys = []
 zipList (x :: xs) [] = []
 zipList (x :: xs) (y :: ys) = (x, y) :: zipList xs ys
 
+mapList: (f: a -> b) -> List a -> List b
+mapList f [] = []
+mapList f (x::xs) = (f x) :: (mapList f xs)
+
 behaviour: List ((BitVec 1, SigTy 32), BitVec 1) 
   -> List ((BitVec 1, SigTy 32), BitVec 1)
-behaviour = (runMealyIO $ fifo4' reg) iniSt --?behaviourFIFO4_rhs
+behaviour = snd . ((runMealy $ fifo4' reg) iniSt)
 
 squeeze: List (BitVec 1, SigTy 32) -> List (BitVec 1) 
   -> List (SigTy 32)
@@ -203,11 +207,11 @@ data Prefix: List a -> List a -> Type where
   PrefixBase: Prefix [] _
   PrefixSucc: Prefix xs ys -> Prefix (x::xs) (x::ys)
   
-prop: (xs: List ((BitVec 1, SigTy 32), BitVec 1))
-  -> Prefix (squeeze (map Builtin.fst $ behaviour xs) (map Builtin.snd xs))
-            (squeeze (map Builtin.fst xs) (map Builtin.snd $ behaviour xs))
-prop [] = PrefixBase
-prop (((validI, datI), readyI)::xs) = ?rhs_prop2
+-- prop: (xs: List ((BitVec 1, SigTy 32), BitVec 1))
+--   -> Prefix (squeeze (mapList Builtin.fst $ behaviour xs) (mapList Builtin.snd xs))
+--             (squeeze (mapList Builtin.fst xs) (mapList Builtin.snd $ behaviour xs))
+-- prop [] = ?rhs_prop1 -- PrefixBase
+-- prop (((validI, datI), readyI)::xs) = ?rhs_prop2
 
 
 -- genHDL: IO ()
