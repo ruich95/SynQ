@@ -34,179 +34,133 @@ sameShape {n = 0} = U
 sameShape {n = (S 0)} = similar
 sameShape {n = (S (S k))} = P similar (sameShape {n=(S k)})
 
-
-dropLast: (Comb comb, Primitive comb)
-  => {auto aIsSig: Sig a} 
-  -> {n: _}
-  -> comb () (Repeat (S n) a)
-  -> comb () (Repeat n a)
-dropLast {n = 0} x = unit
-dropLast {n = (S 0)} x = proj1 x
-dropLast {n = (S (S k))} x = 
-  let _ = repeatSig (S k) aIsSig
-  in prod (proj1 x) (dropLast $ proj2 x)
-
-%hide SeqLib.(>>=)
 %hint
 lteSucc: (n:Nat) -> LTE n (S n)
 lteSucc 0 = LTEZero
 lteSucc (S k) = LTESucc (lteSucc k)
 
--- genIf: (Comb comb, Primitive comb) 
---   => {auto aIsSig: Sig a}
---   -> Elab (comb () (BitVec 1) -> comb () a -> comb () a -> comb () a)
--- genIf {aIsSig = U} = 
---   pure $ \_ => \_ => \_ => unit
--- genIf {aIsSig = (P x y)} = 
---   lambda _ $ \b => lambda _ $ \x1 => lambda _ $ \x2 => 
---     do let x11 = proj1 x1
---            x12 = proj2 x1
---            x21 = proj1 x2
---            x22 = proj2 x2
---        f1 <- genIf {aIsSig = x} <*> (pure b) 
---        f2 <- genIf {aIsSig = y} <*> (pure b) 
---        pure $ prod (f1 x11 x21) (f2 x12 x22)
--- genIf {aIsSig = BV} = 
---   pure $ \b => \x => \y => mux21 b x y
+dropLast4: (Comb comb, Primitive comb) 
+  => {n:_} -> comb () (Repeat 4 $ BitVec n) 
+  -> comb () (Repeat 3 $ BitVec n)
+dropLast4 xs = prod (proj1 xs) (prod (proj1 $ proj2 xs) (proj1 $ proj2 $ proj2 xs))
 
-genSel': (Comb comb, Primitive comb) 
-  => {n: Nat} -> {idxWidth: Nat} -> {dataWidth: Nat}
-  -> {auto notEmpty: LTE 1 n}
-  -> (ks: (Vect n $ BitVec idxWidth))
-  -> Elab (comb () (BitVec idxWidth) -> comb () (Repeat n $ BitVec dataWidth) 
-             -> comb () (BitVec dataWidth))
-genSel' {n = (S 0)} {notEmpty = (LTESucc x)} ks = 
-  lambda _ $ \_ => lambda _ $ \d => pure d
-genSel' {n = (S (S 0))} {notEmpty = (LTESucc x)} (key::_) = 
-  lambda _ $ \idx => lambda _ $ \vs => 
-    Prelude.pure $ mux21 (eq idx (const key)) 
-                         (proj1 vs)
-                         (proj2 vs) -- ?genSel_rhs_3
-genSel' {n = (S (S (S k)))} {notEmpty = (LTESucc x)} (key::ks) = 
-  lambda _ $ \idx => lambda _ $ \vs => 
-    let p1 = repeatSig (S k) (BV {n=idxWidth})
-        p2 = repeatSig (S k) (BV {n=dataWidth})
-        val = proj1 vs 
-        vs  = proj2 vs
-    in do sel' <- genSel' {comb=comb} {idxWidth=idxWidth} {dataWidth=dataWidth} {n= S $ S k} ks
-          pure $ mux21 (eq idx $ const key) val 
-                       (sel' idx vs)
-
-unZip: (Comb comb, Primitive comb) 
-  => {n: Nat} 
-  -> {auto sig: Sig (a, b)}
-  -> Elab ((comb () $ Repeat n (a, b)) 
-  -> ((comb () $ Repeat n a), (comb () $ Repeat n b)))
-unZip {n = 0} = pure $ \_ => (unit, unit)
-unZip {n = (S 0)} {sig=P x y} = pure $ \x => (proj1 x, proj2 x)
-unZip {n = (S (S k))} {sig=P p1 p2} = 
-  lambda _ $ \xs => 
-    let p0 = repeatSig (S k) (P p1 p2)
-        prf1 = repeatSig (S k) p1
-        prf2 = repeatSig (S k) p2
-        x  = proj1 xs
-        xs = proj2 xs
-    in do unzip <- unZip {comb=comb} {n=S k} {sig=P p1 p2}
-          let (xs1, xs2) = unzip xs
-              t1 = (prod (proj1 x) xs1) 
-              t2 = (prod (proj2 x) xs2)
-          pure (t1, t2)
-
-genSel: (Comb comb, Primitive comb) 
-  => {n: Nat} -> {idxWidth: Nat} 
-  -> {auto aIsSig: Sig a}
-  -> {auto notEmpty: LTE 1 n}
-  -> (ks: (Vect n $ BitVec idxWidth))
-  -> Elab (comb () (BitVec idxWidth) -> comb () (Repeat n a)
-             -> comb () a)
-genSel {aIsSig = U} ks = pure $ \_ => \_ => unit
-genSel {aIsSig = (P x y)} ks = 
- lambda _ $ \idx =>lambda _ $ \vs => 
-   do unzip <- unZip {comb = comb} {n}
-      (vs1, vs2) <- Prelude.pure $ unzip vs
-      f1 <- genSel {n=n} {idxWidth=idxWidth} ks <*> (pure idx) 
-      f2 <- genSel {n=n} {idxWidth=idxWidth} ks <*> (pure idx) 
-      pure $ prod (f1 vs1) (f2 vs2)
-genSel {aIsSig = BV {n=m}} ks = genSel' ks
-
-SigTy: (n:Nat) -> Type
-SigTy n = (BitVec n, BitVec 1)
-
-keys: (Vect 4 $ BitVec 3)
-keys = [BV 0, BV 1, BV 2, BV 3]
-
-%language ElabReflection
 sel4: (Comb comb, Primitive comb) 
-  => comb () (BitVec 3) -> comb () (Repeat 4 $ SigTy 32)
-  -> comb () (SigTy 32)
-sel4 = %runElab genSel {n=4} {idxWidth=3} keys
+  => {n:_} -> comb () (BitVec 3) 
+  -> comb () (Repeat 4 $ BitVec n) 
+  -> comb () (BitVec n)
+sel4 idx vs = 
+  mux21 (idx `eq` (const $ BV 0)) (proj1 vs)
+ (mux21 (idx `eq` (const $ BV 1)) (proj1 $ proj2 vs) 
+ (mux21 (idx `eq` (const $ BV 2)) (proj1 $ proj2 $ proj2 vs)
+                                  (proj2 $ proj2 $ proj2 vs)))
 
--- ifSig: (Comb comb, Primitive comb) 
---   => (comb () (BitVec 1) 
---   -> (comb () (SigTy 32)) -> (comb () (SigTy 32)) -> comb () (SigTy 32))
--- ifSig = %runElab genIf --{aIsSig = P BV BV}
+FifoTySig: Type
+FifoTySig = (BitVec 3, (Repeat 4 $ BitVec 32), (Repeat 4 $ BitVec 1))
+
+FifoTySt: Type
+FifoTySt = (LPair (!* BitVec 3) $ LPair (RepeatSt 4 $ (!* BitVec 32)) (RepeatSt 4 $ (!* BitVec 1)))
+
+fwdComb: (Comb comb, Primitive comb) 
+  => comb () FifoTySig -> comb () (BitVec 1, BitVec 32, BitVec 1)
+fwdComb = \curSt => 
+  let curCount = proj1 curSt 
+      curData = proj1 $ proj2 curSt 
+      curLast = proj2 $ proj2 curSt 
+      pt      = lower' 3 (curCount `add` (const $ BV 7))
+      validO  = not $ curCount `eq` (const $ BV 0)
+      dataFn  = sel4 pt
+      lastFn  = sel4 pt
+  in prod validO (prod (dataFn curData) (lastFn curLast))
+
+pack: (Comb comb, Primitive comb) 
+  => comb () (BitVec 3) -> comb () (Repeat 4 $ BitVec 32) 
+  -> comb () (Repeat 4 $ BitVec 1) -> (comb () $ BitVec 1)
+  -> comb () ((BitVec 3, ((Repeat 4 $ BitVec 32), (Repeat 4 $ BitVec 1))), BitVec 1)
+pack i x y r = prod (prod i $ prod x y) r
+
+bwdComb: (Comb comb, Primitive comb) 
+  => (validI: comb () (BitVec 1)) 
+  -> (dataI: comb () (BitVec 32))
+  -> (lastI: comb () (BitVec 1))
+  -> (readyI: comb () (BitVec 1))
+  -> (curSt: comb () FifoTySig) 
+  -> comb () (FifoTySig, BitVec 1)
+bwdComb validI dataI lastI readyI curSt = 
+  let curCount = proj1 curSt 
+      curData  = proj1 $ proj2 curSt 
+      curLast  = proj2 $ proj2 curSt 
+      produce  = (not $ curCount `eq` (const $ BV 0)) `and` (readyI)
+      nxtCount = mux21 produce 
+                   (lower' 3 (curCount `add` (const $ BV 7)))
+                   curCount
+      readyO   = (nxtCount `ltu` (const $ BV 4))
+      en       = readyO `and` validI
+      nxtCount = mux21 en (lower' 3 $ add nxtCount (const $ BV 1))
+                       nxtCount
+      updateD = if_ en (prod dataI $ dropLast4 curData) curData
+      updateL = if_ en (prod lastI $ dropLast4 curLast) curLast
+  in pack nxtCount updateD updateL readyO
+
+%hide Prelude.(>>=)
+-- %unhide SeqLib.(>>=)
+mkFIFO: (Seq comb seq, Primitive comb)
+  => (1 reg: Reg (FifoTySig) comb seq)
+  -> (validI: comb () (BitVec 1)) 
+  -> (dataI:  comb () (BitVec 32)) 
+  -> (lastI:  comb () (BitVec 1))
+  -> (readyI: comb () (BitVec 1))
+  -> seq FifoTySt () ((BitVec 1, (BitVec 32, BitVec 1)), BitVec 1)
+mkFIFO (MkReg get set) validI dataI lastI readyI = 
+  do curSt <- get
+     out   <- pure $ fwdComb curSt
+     bwdOut <- pure $ bwdComb validI dataI lastI readyI curSt
+     _      <- set $ proj1 bwdOut
+     pure $ prod out (proj2 bwdOut)
+
+fifo: (Seq comb seq, Primitive comb)
+  => (1 reg: Reg (FifoTySig) comb seq)
+  -> seq FifoTySt ((BitVec 1, (BitVec 32, BitVec 1)), BitVec 1) 
+                  ((BitVec 1, (BitVec 32, BitVec 1)), BitVec 1)
+fifo reg = abst $ \xin => 
+  let validI = proj1 $ proj1 xin 
+      dataI  = proj1 $ proj2 $ proj1 xin 
+      lastI  = proj2 $ proj2 $ proj1 xin 
+      readyI = proj2 xin
+  in mkFIFO reg validI dataI lastI readyI
+  
+fifoFn: ((BitVec 1, (BitVec 32, BitVec 1)), BitVec 1) -> (1 _: FifoTySt) 
+  -> LC FifoTySt ((BitVec 1, (BitVec 32, BitVec 1)), BitVec 1)
+fifoFn = runSeq' $ fifo reg
+  
+getData0: LC FifoTySt a -> BitVec 32
+getData0 ((c # ((MkBang v # vs) # ls)) # _) = v
+
+getCount: LC FifoTySt a -> BitVec 3
+getCount ((MkBang c # (vs # ls)) # _) = c
+
+getCount': FifoTySt -> BitVec 3
+getCount' (MkBang c # (vs # ls)) = c
 
 
--- mkFIFO: forall s. (Seq comb seq, Primitive comb)
---   => {cWidth: _} -> {n: Nat} 
---   -> {0 a:_} -> {auto aIsSig: Sig a} 
---   -> {auto sIsSt: St s}
---   -> {auto similar: SameShape a s}
---   -> {auto notEmpty: LTE 1 n}
---   -> (1 reg: Reg (BitVec cWidth, Repeat n a) comb seq)
---   -> LPair
---        -- forward path
---        -- input: rst_n
---        -- output: (validO, dataO)
---        ((rst_n : comb () (BitVec 1))
---          -> seq (LPair (!* BitVec cWidth) (RepeatSt n s)) () (BitVec 1, a)) 
---        -- backward path
---        -- input:  dataI, validI, readyI (from the successor stage), rst_n
---        -- output: readyO (to previous stage)
---        ((dataI: comb () a) 
---          -> (validI: comb () (BitVec 1)) 
---          -> (rst_n : comb () (BitVec 1)) 
---          -> (readyI: comb () (BitVec 1))
---          -> seq (LPair (!* BitVec cWidth) (RepeatSt n s)) () (BitVec 1))
--- mkFIFO {n} {notEmpty} (MkReg get set) =
---   let pSig0: Sig (Repeat n a) = repeatSig n aIsSig
---       pSig1: Sig (BitVec cWidth, Repeat n a) = P BV pSig0
---       pSt0: St (RepeatSt n s) = repeatStIsSt 
---       pSt1: St (LPair (!* BitVec cWidth) (RepeatSt n s)) = LP LV pSt0
---       pSame0: SameShape (Repeat n a) (RepeatSt n s)
---         = sameShape
---       pSame1: SameShape (BitVec cWidth, Repeat n a) 
---                         (LPair ((!*) (BitVec cWidth)) 
---                         (RepeatSt n s)) 
---         = P BV pSame0
---   in (\rst_n => 
---         do curSt  <- get
---            let curCount = proj1 curSt
---                curMemSt = proj2 curSt
---            out    <- pure $ sel {prf=notEmpty} 
---                                 (lower' cWidth $ add curCount (not $ const $ BV 0))
---                                 curMemSt
---            validO <- pure $ (not $ curCount `eq` (const $ BV 0))
---            pure $ prod (rst_n `and` validO) out)
---    # (\dataI => \validI => \rst_n => \readyI => 
---          do curSt <- get
---             let curCount = proj1 curSt
---                 curMemSt = proj2 curSt
---                 produce  = (not $ curCount `eq` (const $ BV 0)) `and` (readyI)
---                 nxtCount = mux21 produce 
---                                  (lower' cWidth $ add curCount (not $ const $ BV 0))
---                                  curCount
---                 maxCount = const (BV {n=cWidth} (cast n))
---                 readyO   = (nxtCount `ltu` maxCount)
---                 en       = readyO `and` validI
---                 nxtCount = mux21 en
---                                  (lower' cWidth $ add nxtCount (const $ BV 1))
---                                  nxtCount
---             update <- pure $ case n of 
---                                0         => unit
---                                (S 0)     => dataI
---                                (S (S k)) => prod {bIsSig=repeatSig (S k) aIsSig} 
---                                                  dataI (dropLast curMemSt)
---             _      <- set $ prod (mux21 rst_n nxtCount (const $ BV 0)) 
---                                  (if_ en update curMemSt)
---             pure (rst_n `and` readyO))
+getReadyO: LC FifoTySt ((BitVec 1, (BitVec 32, BitVec 1)), BitVec 1)
+  -> (BitVec 1)
+getReadyO (x # (_, r)) = r
+
+lemma1: (x: BitVec n) -> (y: BitVec n) 
+  -> ((x == y) = True) -> x = y
+
+lemma2: (x: BitVec 1)
+  -> ((x == BV {n=1} 1) = False) -> x = (BV {n=1} 0)
+  
+lemma3: forall x. (x `bvAnd` (BV {n=1} 0)) = (BV {n=1} 0)
+
+prop1: (st: FifoTySt) 
+  -> (d: BitVec 32) -> (l: BitVec 1) -> (ri: BitVec 1)
+  -> ((getReadyO $ fifoFn (((BV {n=1} 1), (d, l)), ri) st) = (BV {n=1} 1))
+  -> ((getCount' st) `bvLtu` (BV {n=3} 5)) = (BV {n=1} 1)
+prop1 st d l ri prf with (ri == (BV {n=1} 1)) proof p
+  prop1 st d l ri prf | True = ?rhs_t
+  prop1 st d l ri prf | False = 
+    let prf1 = lemma2 ri p
+        -- prf2 = rewrite prf1 in prf
+    in ?rhs_f
