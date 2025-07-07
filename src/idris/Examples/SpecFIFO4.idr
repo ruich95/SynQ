@@ -156,33 +156,43 @@ bwdFn d l ri st = (runComb bwd') (st, ((BV {n=1} 1, (d, l)), ri)) -- (st, (BV 1,
 getData0: (FifoTySig, a) -> BitVec 32
 getData0 ((x, (y, z)), _) = fst y
 
-getCount: LC FifoTySt a -> BitVec 3
-getCount ((MkBang c # (vs # ls)) # _) = c
-
-getCount': FifoTySt -> BitVec 3
-getCount' (MkBang c # (vs # ls)) = c
+getCount: (FifoTySig, a) -> BitVec 3
+getCount ((c, (vs, ls)), _) = c
 
 getReady: (FifoTySig, BitVec 1) -> BitVec 1
 getReady (_, x) = x
 
 lemma1: (x: BitVec n) -> (y: BitVec n) 
   -> ((x == y) = True) -> x = y
+  
+lemma2: (x: BitVec 1) 
+  -> ((x == BV 1) = False) -> x = BV 0
+  
+lemma3: forall n. (x: BitVec n) 
+  -> ((x == BV 0) = False) -> ((BV 0) `bvLtu` x = BV 1)
 
 andProp1: forall n. {x: BitVec n} -> (x `bvAnd` (BV {n=n} 0)) = (BV {n=n} 0)
-
 andProp2: forall n. ((BV {n=n} 1) `bvAnd` (BV {n=n} 1)) = (BV {n=n} 1)
+andProp3: forall n. {x: BitVec n} -> {y: BitVec n} -> (x `bvAnd` y) = (y `bvAnd` x)
 
 notProp1: bvNot (BV {n=1} 0) = BV {n=1} 1
+notProp2: bvNot (BV {n=1} 1) = BV {n=1} 0
 
-ltuProp1: bvLtu {n=3} (BV 0) (BV 4) = BV 1
-ltuProp2: bvLtu {n=3} (BV 0) (BV 5) = BV 1
+ltu3Prop1: bvLtu {n=3} (BV 0) (BV 4) = BV 1
+ltu3Prop2: bvLtu {n=3} (BV 0) (BV 5) = BV 1
+ltu3Prop3: bvLtu {n=3} (BV 0) (BV 1) = BV 1
 
-ltu3Prop1: (x: BitVec 3) -> (y: BitVec 3)
+ltu3Prop4: (x: BitVec 3) -> (y: BitVec 3)
   -> (x == BV 0) = False
   -> bvLtu x y = (bvLtu (bvSlice 0 3 (bvAdd x (BV 7)))
                         (bvSlice 0 3 (bvAdd y (BV 7))))
 
 add3Prop1: bvSlice 0 3 (bvAdd {n=3} (BV 5) (BV 7)) = BV 4
+
+add3Prop2: {x: BitVec 3} -> (bvLtu x (BV 4) = BV 1) 
+  -> ((BV 0) `bvLtu` (bvSlice 0 3 (bvAdd {n=3} x (BV 1)))) = BV 1
+
+add3Prop3: {x: BitVec 3} -> bvSlice 0 3 (bvAdd {n=3} (BV 0) x) = x
 
 prop1: (st: FifoTySig) 
   -> (d: BitVec 32) -> (l: BitVec 1) -- readyI = 0
@@ -198,13 +208,39 @@ prop1 st d l prf with (fst st)
               prf2: ((cond == BV {n=1} 1) = False) = rewrite prf1 in Refl
               prf3: (False = True) = rewrite sym prf2 in p2
           in absurd prf3
-    prop1 st d l prf | c | True = rewrite lemma1 c (BV {n=3} 0) p0 in ltuProp1
+    prop1 st d l prf | c | True = rewrite lemma1 c (BV {n=3} 0) p0 in ltu3Prop1
 
 prop3: (st: FifoTySig) 
   -> (d: BitVec 32) -> (l: BitVec 1) -- readyI = 0
   ->((getReady $ bwdFn d l (BV {n=1} 0) st) = (BV {n=1} 1))
   -> (getData0 $ bwdFn d l (BV {n=1} 0) st) = d
-prop3 st d l prf = ?prop3_rhs
+prop3 st d l prf with (fst st == BV 0) proof p0
+  prop3 st d l prf | False = 
+    rewrite andProp1 {x= (bvNot {n=1} (BV 0))} in 
+    rewrite prop1 st d l (rewrite p0 in prf) in 
+    rewrite andProp2 {n=1} in Refl
+  prop3 st d l prf | True = 
+    rewrite andProp1 {x= (bvNot {n=1} (BV 1))} in 
+    rewrite prop1 st d l (rewrite p0 in prf) in 
+    rewrite andProp2 {n=1} in Refl
+
+prop5: (st: FifoTySig) 
+  -> (d: BitVec 32) -> (l: BitVec 1) -- readyI = 0
+  ->((getReady $ bwdFn d l (BV {n=1} 0) st) = (BV {n=1} 1))
+  -> ((BV 0) `bvLtu` (getCount $ bwdFn d l (BV {n=1} 0) st)) = (BV {n=1} 1)
+prop5 st d l prf with (fst st == BV 0) proof p0
+  prop5 st d l prf | False = 
+    let prf' = prop1 st d l (rewrite p0 in prf)  in
+    rewrite andProp1 {x= (bvNot {n=1} (BV 0))} in 
+    rewrite prf' in 
+    rewrite andProp2 {n=1} in
+    add3Prop2 {x = fst st} prf'
+  prop5 st d l prf | True = 
+    let prf' = prop1 st d l (rewrite p0 in prf)  in
+    rewrite andProp1 {x= (bvNot {n=1} (BV 1))} in 
+    rewrite prf' in 
+    rewrite andProp2 {n=1} in
+    add3Prop2 {x = fst st} prf'
 
 prop2: (st: FifoTySig) 
   -> (d: BitVec 32) -> (l: BitVec 1) -- readyI = 1
@@ -217,9 +253,60 @@ prop2 st d l prf with (fst st == BV 0) proof p0
             = rewrite sym p1 in rewrite notProp1 in Refl
           prf2: (cond = BV {n=1} 1) 
             = rewrite sym prf1 in andProp2
-          prf3 = ltu3Prop1 (fst st) (BV 5) p0
+          prf3 = ltu3Prop4 (fst st) (BV 5) p0
       in rewrite sym prf in 
          rewrite prf2 in 
          rewrite prf3 in 
          rewrite add3Prop1 in Refl
-  prop2 st d l prf | True = rewrite lemma1 (fst st) (BV {n=3} 0) p0 in ltuProp2
+  prop2 st d l prf | True = rewrite lemma1 (fst st) (BV {n=3} 0) p0 in ltu3Prop2
+
+prop4: (st: FifoTySig) 
+  -> (d: BitVec 32) -> (l: BitVec 1) -- readyI = 1
+  ->((getReady $ bwdFn d l (BV {n=1} 1) st) = (BV {n=1} 1))
+  -> (getData0 $ bwdFn d l (BV {n=1} 1) st) = d
+prop4 st d l prf with (fst st == BV 0) proof p0
+  prop4 st d l prf | False = 
+    rewrite notProp1 in 
+    rewrite andProp2 {n=1} in 
+    rewrite sym add3Prop1 in 
+    rewrite sym $ ltu3Prop4 (fst st) (BV 5) p0 in 
+    rewrite prop2 st d l (rewrite p0 in prf) in
+    rewrite andProp2 {n=1} in Refl
+  prop4 st d l prf | True = 
+    rewrite notProp2 in 
+    rewrite andProp3 {n=1} {x=BV 0} {y=BV 1} in 
+    rewrite andProp1 {n=1} {x=BV 1} in 
+    rewrite lemma1 (fst st) (BV {n=3} 0) p0 in 
+    rewrite ltu3Prop1 in 
+    rewrite andProp2 {n=1} in Refl
+
+prop6: (st: FifoTySig) 
+  -> (d: BitVec 32) -> (l: BitVec 1) -- readyI = 0
+  ->((getReady $ bwdFn d l (BV {n=1} 1) st) = (BV {n=1} 1))
+  -> ((BV 0) `bvLtu` (getCount $ bwdFn d l (BV {n=1} 0) st)) = (BV {n=1} 1)
+prop6 st d l prf with (fst st == BV 0) proof p0
+  prop6 st d l prf | False with (((fst st) `bvLtu` BV 4) == BV 1) proof p1
+    prop6 st d l prf | False | False = 
+      rewrite notProp1 in 
+      rewrite andProp1 {n=1} {x=BV 1} in 
+      let prf' = lemma2 ((fst st) `bvLtu` BV 4) p1 in 
+      rewrite prf' in
+      rewrite andProp3 {n=1} {x=BV 0} {y=BV 1} in
+      rewrite andProp1 {n=1} {x=BV 1} in
+      lemma3 (fst st) p0
+--      ?prop6_rhs_0_rhs_0
+    prop6 st d l prf | False | True =
+      rewrite notProp1 in 
+      rewrite andProp1 {n=1} {x=BV 1} in 
+      let prf' = lemma1 ((fst st) `bvLtu` BV 4) (BV 1) p1 in 
+      rewrite prf' in
+      rewrite andProp2 {n=1} in 
+      add3Prop2 {x=fst st} prf'
+  prop6 st d l prf | True = 
+    rewrite notProp2 in 
+    rewrite andProp1 {n=1} {x=BV 0} in 
+    rewrite lemma1 (fst st) (BV {n=3} 0) p0 in 
+    rewrite ltu3Prop1 in 
+    rewrite andProp2 {n=1} in
+    rewrite add3Prop3 {x=BV 1} in 
+    ltu3Prop3
