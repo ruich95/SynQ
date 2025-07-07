@@ -181,17 +181,14 @@ notProp2: bvNot (BV {n=1} 1) = BV {n=1} 0
 ltu3Prop1: bvLtu {n=3} (BV 0) (BV 4) = BV 1
 ltu3Prop2: bvLtu {n=3} (BV 0) (BV 5) = BV 1
 ltu3Prop3: bvLtu {n=3} (BV 0) (BV 1) = BV 1
-
 ltu3Prop4: (x: BitVec 3) -> (y: BitVec 3)
   -> (x == BV 0) = False
   -> bvLtu x y = (bvLtu (bvSlice 0 3 (bvAdd x (BV 7)))
                         (bvSlice 0 3 (bvAdd y (BV 7))))
 
 add3Prop1: bvSlice 0 3 (bvAdd {n=3} (BV 5) (BV 7)) = BV 4
-
 add3Prop2: {x: BitVec 3} -> (bvLtu x (BV 4) = BV 1) 
   -> ((BV 0) `bvLtu` (bvSlice 0 3 (bvAdd {n=3} x (BV 1)))) = BV 1
-
 add3Prop3: {x: BitVec 3} -> bvSlice 0 3 (bvAdd {n=3} (BV 0) x) = x
 
 prop1: (st: FifoTySig) 
