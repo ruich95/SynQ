@@ -11,6 +11,7 @@ import Data.List
 %hide Prelude.(=<<)
 %hide Prelude.pure
 
+public export
 RepeatSt: Nat -> (s: Type) -> Type
 RepeatSt 0 s = ()
 RepeatSt (S 0) s = s
@@ -113,9 +114,11 @@ mkFIFO {n} {notEmpty} (MkReg get set) =
                                  (if_ en update curMemSt)
             pure (rst_n `and` readyO))
 
+public export
 SigTy: (n:Nat) -> Type
 SigTy n = (BitVec n, BitVec 1)
 
+public export
 StTy: (n:Nat) -> Type
 StTy n = (LPair (!* BitVec n) (!* BitVec 1))
 
@@ -158,6 +161,7 @@ fifo4One reg =
           readyO <- (bwd dataI validI rst_n readyI)
           pure $ prod dataO readyO
 
+export
 fifo4': (Seq comb seq, Primitive comb)
   => (1 reg: Reg (BitVec 3, Repeat 4 (SigTy 32)) comb seq)
   -> seq (LPair (!* BitVec 3) (RepeatSt 4 (StTy 32))) 
@@ -174,38 +178,39 @@ fifo4' reg =
           readyO <- (bwd dataI validI rst_n readyI)
           pure $ prod dataO readyO
 
+export
 iniSt: LPair (!* BitVec 3) (RepeatSt 4 (StTy 32))
 iniSt = (MkBang $ BV {n=3} 0) # ((MkBang (BV {n=32} 0) # MkBang (BV {n=1} 0)) # ((MkBang (BV {n=32} 0) # MkBang (BV {n=1} 0)) # ((MkBang (BV {n=32} 0) # MkBang (BV {n=1} 0)) # (MkBang (BV {n=32} 0) # MkBang (BV {n=1} 0)))))
 
-repeat: (n: Nat) -> a -> List a
-repeat 0 x = []
-repeat (S k) x = x :: repeat k x
+-- repeat: (n: Nat) -> a -> List a
+-- repeat 0 x = []
+-- repeat (S k) x = x :: repeat k x
 
-zipList: List a -> List b -> List (a, b)
-zipList [] ys = []
-zipList (x :: xs) [] = []
-zipList (x :: xs) (y :: ys) = (x, y) :: zipList xs ys
+-- zipList: List a -> List b -> List (a, b)
+-- zipList [] ys = []
+-- zipList (x :: xs) [] = []
+-- zipList (x :: xs) (y :: ys) = (x, y) :: zipList xs ys
 
-mapList: (f: a -> b) -> List a -> List b
-mapList f [] = []
-mapList f (x::xs) = (f x) :: (mapList f xs)
+-- mapList: (f: a -> b) -> List a -> List b
+-- mapList f [] = []
+-- mapList f (x::xs) = (f x) :: (mapList f xs)
 
-behaviour: List ((BitVec 1, SigTy 32), BitVec 1) 
-  -> List ((BitVec 1, SigTy 32), BitVec 1)
-behaviour = snd . ((runMealy $ fifo4' reg) iniSt)
+-- behaviour: List ((BitVec 1, SigTy 32), BitVec 1) 
+--   -> List ((BitVec 1, SigTy 32), BitVec 1)
+-- behaviour = snd . ((runMealy $ fifo4' reg) iniSt)
 
-squeeze: List (BitVec 1, SigTy 32) -> List (BitVec 1) 
-  -> List (SigTy 32)
-squeeze [] ys = []
-squeeze (x :: xs) [] = []
-squeeze ((valid, dat) :: xs) (ready :: ys) = 
-  if (valid == BV 1) && (ready == BV 1) 
-  then dat :: squeeze xs ys
-  else squeeze xs ys
+-- squeeze: List (BitVec 1, SigTy 32) -> List (BitVec 1) 
+--   -> List (SigTy 32)
+-- squeeze [] ys = []
+-- squeeze (x :: xs) [] = []
+-- squeeze ((valid, dat) :: xs) (ready :: ys) = 
+--   if (valid == BV 1) && (ready == BV 1) 
+--   then dat :: squeeze xs ys
+--   else squeeze xs ys
   
-data Prefix: List a -> List a -> Type where
-  PrefixBase: Prefix [] _
-  PrefixSucc: Prefix xs ys -> Prefix (x::xs) (x::ys)
+-- data Prefix: List a -> List a -> Type where
+--   PrefixBase: Prefix [] _
+--   PrefixSucc: Prefix xs ys -> Prefix (x::xs) (x::ys)
   
 -- prop: (xs: List ((BitVec 1, SigTy 32), BitVec 1))
 --   -> Prefix (squeeze (mapList Builtin.fst $ behaviour xs) (mapList Builtin.snd xs))
