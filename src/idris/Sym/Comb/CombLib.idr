@@ -63,14 +63,14 @@ public export
 
 -- Parallel Composition
 public export
-(<>): {comb:_} -> (Comb comb)
+(<>): (Comb comb)
    => {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
    -> {auto cIsSig: Sig c} -> {auto dIsSig: Sig d}
    -> comb a b -> comb c d -> comb (a, c) (b, d)
 (<>) f g = lam $ \xs => prod (app f $ proj1 xs) (app g $ proj2 xs)
 
 public export
-reduce: {comb:_} -> (Comb comb)
+reduce: (Comb comb)
      => {auto prf1: Sig a}
      -> {auto prf2: All (OfType a) as}
      -> (f: comb (a, a) a)
@@ -91,11 +91,33 @@ if_ {aIsSig = (P z w)} b x y =
        (if_ b (proj2 x) (proj2 y))
 if_ {aIsSig = BV} b x y = mux21 b x y
 
-repeat: {comb:_} -> (Comb comb)
+repeat: (Comb comb)
      => {auto prf1: Sig a} 
      -> (n: Nat) -> comb a a -> comb a a
 repeat 0 f = lam id
 repeat (S k) f = f << (repeat k f)
+
+public export
+pointwise: (Comb comb, Primitive comb)
+  => {auto aIsSig: Sig a} 
+  -> {auto bIsSig: Sig b}
+  -> {auto cIsSig: Sig c}
+  -> {n: Nat}
+  -> (comb () a -> comb () b -> comb () c)
+  -> comb () (Repeat n a)
+  -> comb () (Repeat n b) 
+  -> comb () (Repeat n c)
+pointwise {n = 0} f _ _   = unit
+pointwise {n = (S 0)} f x y = f x y
+pointwise {n = (S (S k))} f x y = 
+  let p1 = repeatSig (S k) aIsSig
+      p2 = repeatSig (S k) bIsSig
+      p3 = repeatSig (S k) cIsSig
+      hdx = proj1 x 
+      tlx = proj2 x 
+      hdy = proj1 y
+      tly = proj2 y
+  in prod (f hdx hdy) $ pointwise f tlx tly
 
 -- Linear reduce
 example1: {n:_} -> {comb:_} -> (Comb comb)
@@ -127,3 +149,22 @@ reduce2: {comb:_} -> (Comb comb)
 reduce2 {prf2 = (AllU p)} f = 
   rewrite sym $ p in lam id
 reduce2 {prf2 = (AllP p1 p2)} f = f <| (reduce2 f) |< (reduce2 f)
+
+
+lteSucc: (n:Nat) -> LTE n (S n)
+lteSucc 0 = LTEZero
+lteSucc (S k) = LTESucc (lteSucc k)
+
+public export
+adder: {n:_} 
+  -> (Comb comb, Primitive comb)
+  => comb (BitVec n, BitVec n) (BitVec n)
+adder = lam $ \x => lower' {prf=lteSucc n} n (add (proj1 x) (proj2 x))
+
+public export
+adder': {n:_} 
+  -> (Comb comb, Primitive comb)
+  => comb () (BitVec n)
+  -> comb () (BitVec n) 
+  -> comb () (BitVec n)
+adder' x y = lower' {prf=lteSucc n} n $ add x y
