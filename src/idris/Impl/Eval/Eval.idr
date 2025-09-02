@@ -62,6 +62,13 @@ runReact: (Show a, Show b, Show s)
   -> IO()
 runReact input (MkSeq f) st = reactMealy input f st
 
+export
+runReactIO: (Show a, Show b) 
+  => (input: IO a) 
+  -> (sys: Sequential s a b) -> (st: s) 
+  -> IO()
+runReactIO input (MkSeq f) st = reactMealyIO input f st
+
 -- public export
 -- runMealyLemma: (sys: Eval.Sequential s a b) 
 --   -> (st: s) -> (xs1: List a) -> (xs2: List a)

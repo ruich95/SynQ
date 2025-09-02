@@ -106,7 +106,18 @@ react parse f st =
      putStrLn "{\"output\" : \"\{show out}\"}"
      fflush stdout
      pure st'
-     
+
+reactIO: (Show a, Show b) 
+  => (parse: IO a) 
+  -> (a -> LState s b) -> (st: s)
+  -> IO s
+reactIO parse f st = 
+  do inData <- parse 
+     (st' # out) <- pure (runState (f inData) st)
+     putStrLn "{\"output\" : \"\{show out}\"}"
+     fflush stdout
+     pure st'
+               
 export
 reactMealy: (Show a, Show b, Show s) 
   => (parse: IO a) 
@@ -115,6 +126,15 @@ reactMealy: (Show a, Show b, Show s)
 reactMealy parse f st = 
   do st' <- react parse f st
      reactMealy parse f st'
+
+export
+reactMealyIO: (Show a, Show b) 
+  => (parse: IO a) 
+  -> (a -> LState s b) -> (st: s)
+  -> IO ()
+reactMealyIO parse f st = 
+  do st' <- reactIO parse f st
+     reactMealyIO parse f st'
 
 {-To be used in types/proofs (w/ multiplicity 0) only-}
 

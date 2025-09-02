@@ -54,6 +54,7 @@ getLast {n = (S (S k))} x =
       x' = proj2 x 
   in getLast {n=S k} x'
 
+%spec m
 firState: (Seq comb seq, Primitive comb)
   => {auto aIsSig: Sig a}
   -> {auto sIsSt : St s}
@@ -85,6 +86,8 @@ sum x =
       sig = repeatSig (S m) $ BV {n=n}
   in (reduce adder) << x
 
+export
+%spec m, weights, sign
 mkFIR: (Seq comb seq, Primitive comb)
   => {m: Nat} -> {n: Nat} -> {maxSht: Nat}
   -> (init: comb () $ Repeat (S $ S m) $ BitVec $ S (maxSht+n))

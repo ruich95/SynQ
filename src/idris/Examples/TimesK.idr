@@ -29,6 +29,7 @@ shtmt ((S k) ** (True  :: xs)) =
 
 %hide Prelude.concat
 
+%spec n, m, maxSht, shtmt
 shift: (Comb comb, Primitive comb) 
   => {n: _} 
   -> (m: Nat) -> (maxSht: Nat) -> (shtmt: Vect m Nat) 
@@ -67,6 +68,7 @@ timesK' k =
        0     => (0 ** lam $ \x => const $ BV 0)
        (S m) => (maxSht ** lam $ \x => TimesK.sum $ shift nSht maxSht shtVec x)
 
+%spec k, maxSht
 timesK: (Comb comb, Primitive comb) 
   => {n: Nat} 
   -> (x: comb () $ BitVec n)
@@ -105,6 +107,7 @@ dotK: (Comb comb, Primitive comb)
 dotK x k maxSht = TimesK.sum $ pointwiseMultK x k maxSht
 
 export
+%spec k, maxSht
 timesKs: (Comb comb, Primitive comb) 
   => {n: Nat} -> {m: Nat}
   -> (x: comb () $ BitVec n)
@@ -119,6 +122,7 @@ timesKs {m=S $ S m} x (k :: ks) maxSht =
   in prod y (timesKs x ks maxSht)
   
 export
+%spec k
 neg: (Comb comb, Primitive comb) 
   => {n: Nat} -> {m: Nat}
   -> (k: Vect m Bool)
