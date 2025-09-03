@@ -2,6 +2,7 @@ module Examples.TimesK
 
 import SynQ
 import Data.Vect
+import Impl.TAC
 
 %tcinline
 div2: Nat -> Nat
