@@ -4,6 +4,7 @@ import Impl.TAC.Types
 import Control.Monad.State
 import Data.LState
 import Data.Linear
+import Data.State
 
 public export
 record TACComb (a: Type) (b: Type) where
@@ -12,12 +13,22 @@ record TACComb (a: Type) (b: Type) where
 
 public export
 data TACSeq: Type -> Type -> Type -> Type where
-  MkTACS: (1 _: LState (LPair (!* Nat) (Nat -> TACData)) TAC1) -> TACSeq _ _ _
+  MkTACS: (1 _: LState (LPair (!* Nat) TACSt) TAC1) -> TACSeq _ _ _
   
 public export
 genTACS: (1 _: TACSeq s a b) 
-  -> LState (LPair (!* Nat) (Nat -> TACData)) TAC1
+  -> LState (LPair (!* Nat) TACSt) TAC1
 genTACS (MkTACS x) = x
+
+public export
+genTAC: {auto sIsSt: St s} 
+  -> (1 _: TACSeq s a b) 
+  -> LC TACSt TAC1
+genTAC (MkTACS f) = 
+  let ty = fromSt sIsSt
+      (MkBang _ # st) # sys = 
+        LState.runState f (MkBang 0 # MkSt (NM "st") ty)
+  in st # sys
 
 public export
 substByGl1: (old: TACData) -> (new: TACData) -> TACGl1 -> TACGl1
@@ -40,7 +51,11 @@ substByOp1: (old: TACData) -> (new: TACData) -> TACOp1 -> TACOp1
 substByOp1 old new (x ::= y) = 
   let x'   = if x == old   then new else x
       y'   = if y == old   then new else y
-  in x' ::= y
+  in x' ::= y'
+substByOp1 old new (x <<= y) = 
+  let x'   = if x == old   then new else x
+      y'   = if y == old   then new else y
+  in x' <<= y'
 substByOp1 old new (ADD x y dst) = 
   let x'   = if x == old   then new else x
       y'   = if y == old   then new else y

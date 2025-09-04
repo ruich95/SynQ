@@ -2,6 +2,8 @@ module Impl.TAC.Types
 
 import Data.Signal
 import Data.BitVec
+import Data.Linear
+import Data.State
 
 public export
 data Name = Anon | NM String
@@ -30,6 +32,13 @@ fromSig U = UnitTy
 fromSig (P x y) = 
   ProdTy (fromSig x) (fromSig y)
 fromSig (BV {n}) = BvTy n
+
+public export
+fromSt: St s -> TACTy
+fromSt LU = UnitTy
+fromSt (LP st1 st2) = 
+  ProdTy (fromSt st1) (fromSt st2)
+fromSt (LV {n}) = BvTy n
 
 public export
 data TACData: Type where
@@ -69,7 +78,7 @@ getTy U             = UnitTy
 getTy (Var nm ty1)  = ty1
 
 export infixr 9 ::=
-export infixr 9 ~>
+export infixr 9 <<=
 
 public export
 data TACGl1: Type where
@@ -79,7 +88,8 @@ data TACGl1: Type where
 
 public export
 data TACOp1: Type where
-  (::=)  : TACData -> TACData -> TACOp1 -- assignment
+  (::=)  : TACData -> TACData -> TACOp1 -- set state
+  (<<=)   : TACData -> TACData -> TACOp1 -- get state
   ADD    : TACData -> TACData -> (dst: TACData) -> TACOp1
   CONCAT : TACData -> TACData -> (dst: TACData) -> TACOp1
   AND    : TACData -> TACData -> (dst: TACData) -> TACOp1
@@ -104,3 +114,13 @@ record TAC1 where
   input : TACData
   output: TACData
   ops   : List TACAtom1
+
+public export
+data TACSt: Type where
+  MkSt: (name: Name) -> (ty: TACTy) -> TACSt
+  
+-- public export
+-- record TAC2 where
+--   constructor MkTAC2
+--   get  : TACSt -> TACData 
+--   1 set  : TACData -> TACSt
