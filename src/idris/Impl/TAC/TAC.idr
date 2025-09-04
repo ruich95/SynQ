@@ -2,12 +2,23 @@ module Impl.TAC.TAC
 
 import Impl.TAC.Types
 import Control.Monad.State
+import Data.LState
+import Data.Linear
 
 public export
 record TACComb (a: Type) (b: Type) where
   constructor MkTACC
   genTacC: State Nat TAC1
+
+public export
+data TACSeq: Type -> Type -> Type -> Type where
+  MkTACS: (1 _: LState (LPair (!* Nat) (Nat -> TACData)) TAC1) -> TACSeq _ _ _
   
+public export
+genTACS: (1 _: TACSeq s a b) 
+  -> LState (LPair (!* Nat) (Nat -> TACData)) TAC1
+genTACS (MkTACS x) = x
+
 public export
 substByGl1: (old: TACData) -> (new: TACData) -> TACGl1 -> TACGl1
 substByGl1 old new (PROD z w dst) = 
