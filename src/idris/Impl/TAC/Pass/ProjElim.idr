@@ -1,4 +1,4 @@
-module Impl.TAC.Pass
+module Impl.TAC.Pass.ProjElim
 
 import Impl.TAC.Types
 import Impl.TAC.TAC
