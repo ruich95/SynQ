@@ -1,4 +1,4 @@
-module Impl.TAC.SeqPrimitive
+module Impl.TAC.Seq.SeqPrimitive
 
 import Sym.Comb.Comb
 import Sym.Seq.SeqPrimitive
@@ -13,8 +13,9 @@ import Data.Linear
 import Data.List
 import Data.LC 
 
+import Impl.TAC.Common
 import Impl.TAC.TAC
-import Impl.TAC.Types
+import Impl.TAC.GenTAC
 import Impl.TAC.Comb
 
 public export                                   
@@ -26,10 +27,8 @@ where
     -> TACSeq s () a
   get = MkTACS $ LST 
       $ \(MkBang c # (MkSt nm ty)) => 
-          let (c', varOut) = 
-                runState c $ genVar $ fromSig aIsSig
-          in (MkBang c' # MkSt nm ty) 
-           # (MkTAC1 U varOut [Op $ varOut <<= Var nm ty])
+           (MkBang c # MkSt nm ty) 
+         # (MkTAC1 U (Var nm ty) [])
                                      
   set: {auto aIsSig: Sig a} -> {auto sIsState: St s}
     -> {auto similar: SameShape a s}
@@ -38,4 +37,6 @@ where
                  $ \(MkBang c # (MkSt name ty)) => 
                      let (c', (MkTAC1 _ outX opsX)) = runState c x
                      in (MkBang c' # MkSt name ty) 
-                      # (MkTAC1 U U $ opsX ++ [Op $ Var name ty ::= outX])
+                      # (MkTAC1 U U 
+                           $ opsX 
+                           ++ [Op $ Var name ty ::= outX])

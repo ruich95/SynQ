@@ -1,145 +1,119 @@
 module Impl.TAC.TAC
 
-import Impl.TAC.Types
-import Control.Monad.State
-import Data.LState
+import Data.Signal
+import Data.BitVec
 import Data.Linear
 import Data.State
 
 public export
-record TACComb (a: Type) (b: Type) where
-  constructor MkTACC
-  genTacC: State Nat TAC1
+data Name = Anon | NM String
 
 public export
-data TACSeq: Type -> Type -> Type -> Type where
-  MkTACS: (1 _: LState (LPair (!* Nat) TACSt) TAC1) -> TACSeq _ _ _
+data TACTy: Type where
+  BvTy  : (width: Nat) -> TACTy
+  ProdTy: (a: TACTy) -> (b: TACTy) -> TACTy
+  UnitTy: TACTy
+  
+%name TACTy ty1, ty2
+
+public export
+data TACData: Type where
+  Const: {n: _} -> BitVec n -> TACData
+  U    : TACData
+  SVar : (label: Nat) -> TACTy -> TACData -- simple variable
+  CVar : (d1: TACData) -> (d2: TACData) 
+      -> TACTy -> TACData -- product of variables
   
 public export
-genTACS: (1 _: TACSeq s a b) 
-  -> LState (LPair (!* Nat) TACSt) TAC1
-genTACS (MkTACS x) = x
+Eq Name where
+  (==) Anon Anon = True
+  (==) (NM str1) (NM str2) = str1 == str2
+  (==) _ _ = False
 
 public export
-genTAC: {auto sIsSt: St s} 
-  -> (1 _: TACSeq s a b) 
-  -> LC TACSt TAC1
-genTAC (MkTACS f) = 
-  let ty = fromSt sIsSt
-      (MkBang _ # st) # sys = 
-        LState.runState f (MkBang 0 # MkSt (NM "st") ty)
-  in st # sys
+Eq TACTy where
+  (==) (BvTy width1) (BvTy width2) = 
+    width1 == width2
+  (==) (ProdTy a1 b1) (ProdTy a2 b2) = 
+    (a1 == a2) && (b1 == b2)
+  (==) UnitTy UnitTy = True
+  (==) _ _ = False
+      
+public export
+Eq TACData where
+  (==) (Const {n=n1} x) (Const {n=n2} y) with (cmp n1 n2)
+    (==) (Const {n=n1} x) (Const {n=n1} y) | CmpEQ = x == y
+    (==) (Const {n=n1} x) (Const {n=n2} y) | _     = False
+  (==) U U = True
+  (==) (SVar label1 ty1) (SVar label2 ty2) = 
+    (label1 == label2) && (ty1 == ty2)
+  (==) (CVar d11 d12 ty1) (CVar d21 d22 ty2) = 
+    (d11 == d21) && (d12 == d22) && (ty1 == ty2)
+  (==) _ _ = False
 
 public export
-substByGl1: (old: TACData) -> (new: TACData) -> TACGl1 -> TACGl1
-substByGl1 old new (PROD z w dst) = 
-  let z'   = if z == old   then new else z 
-      w'   = if w == old   then new else w
-      dst' = if dst == old then new else dst
-  in PROD z' w' dst'
-substByGl1 old new (PROJ1 z dst) = 
-  let z'   = if z == old   then new else z 
-      dst' = if dst == old then new else dst
-  in PROJ1 z' dst'
-substByGl1 old new (PROJ2 z dst) = 
-  let z'   = if z == old   then new else z 
-      dst' = if dst == old then new else dst
-  in PROJ2 z' dst'
+getTy: TACData -> TACTy
+getTy (Const {n} x)  = BvTy n
+getTy U              = UnitTy
+getTy (SVar _ ty1)   = ty1
+getTy (CVar _ _ ty1) = ty1
 
-
-substByOp1: (old: TACData) -> (new: TACData) -> TACOp1 -> TACOp1
-substByOp1 old new (x ::= y) = 
-  let x'   = if x == old   then new else x
-      y'   = if y == old   then new else y
-  in x' ::= y'
-substByOp1 old new (x <<= y) = 
-  let x'   = if x == old   then new else x
-      y'   = if y == old   then new else y
-  in x' <<= y'
-substByOp1 old new (ADD x y dst) = 
-  let x'   = if x == old   then new else x
-      y'   = if y == old   then new else y
-      dst' = if dst == old then new else dst
-  in ADD x' y' dst'
-substByOp1 old new (CONCAT x y dst) = 
-  let x'   = if x == old   then new else x
-      y'   = if y == old   then new else y
-      dst' = if dst == old then new else dst
-  in CONCAT x' y' dst'
-substByOp1 old new (AND x y dst) = 
-  let x'   = if x == old   then new else x
-      y'   = if y == old   then new else y
-      dst' = if dst == old then new else dst
-  in AND x' y' dst'
-substByOp1 old new (OR x y dst) = 
-  let x'   = if x == old   then new else x
-      y'   = if y == old   then new else y
-      dst' = if dst == old then new else dst
-  in OR x' y' dst'
-substByOp1 old new (XOR x y dst) = 
-  let x'   = if x == old   then new else x
-      y'   = if y == old   then new else y
-      dst' = if dst == old then new else dst
-  in XOR x' y' dst'
-substByOp1 old new (EQ x y dst) = 
-  let x'   = if x == old   then new else x
-      y'   = if y == old   then new else y
-      dst' = if dst == old then new else dst
-  in EQ x' y' dst'
-substByOp1 old new (LTU x y dst) = 
-  let x'   = if x == old   then new else x
-      y'   = if y == old   then new else y
-      dst' = if dst == old then new else dst
-  in LTU x' y' dst'
-substByOp1 old new (LT x y dst) = 
-  let x'   = if x == old   then new else x
-      y'   = if y == old   then new else y
-      dst' = if dst == old then new else dst
-  in LT x' y' dst'
-substByOp1 old new (MUX21 b x y dst) = 
-  let b'   = if b == old   then new else b
-      x'   = if x == old   then new else x
-      y'   = if y == old   then new else y
-      dst' = if dst == old then new else dst
-  in MUX21 b' x' y' dst'
-substByOp1 old new (SLL k x dst) = 
-  let x'   = if x == old   then new else x
-      dst' = if dst == old then new else dst
-  in SLL k x' dst'
-substByOp1 old new (SRL k x dst) = 
-  let x'   = if x == old   then new else x
-      dst' = if dst == old then new else dst
-  in SRL k x' dst'
-substByOp1 old new (SRA k x dst) = 
-  let x'   = if x == old   then new else x
-      dst' = if dst == old then new else dst
-  in SRA k x' dst'
-substByOp1 old new (NOT x dst) = 
-  let x'   = if x == old   then new else x
-      dst' = if dst == old then new else dst
-  in NOT x' dst'
-substByOp1 old new (SLICE k j x dst) = 
-  let x'   = if x == old   then new else x
-      dst' = if dst == old then new else dst
-  in SLICE k j x' dst'
+export infixr 9 ::=
 
 public export
-substBy1: (old: TACData) -> (new: TACData) 
-  -> List TACAtom1 -> List TACAtom1
-substBy1 old new [] = []
-substBy1 old new ((Gl x) :: xs) = 
-  (Gl $ substByGl1 old new x) :: (substBy1 old new xs)
-substBy1 old new ((Op x) :: xs) = 
-  (Op $ substByOp1 old new x) :: (substBy1 old new xs)
+data TACGl1: Type where
+  PROD   : TACData -> TACData -> (dst: TACData) -> TACGl1
+  PROJ1  : TACData -> (dst: TACData) -> TACGl1
+  PROJ2  : TACData -> (dst: TACData) -> TACGl1
 
 public export
-substInput1: TAC1 -> TACData -> TAC1
-substInput1 (MkTAC1 input output ops) x = 
-  let ops' = substBy1 input x ops 
-      output' = if output == x
-                then x else output
-  in MkTAC1 U output' ops'
+data TACOp1: Type where
+  (::=)  : TACData -> TACData -> TACOp1 -- set state
+  ADD    : TACData -> TACData -> (dst: TACData) -> TACOp1
+  CONCAT : TACData -> TACData -> (dst: TACData) -> TACOp1
+  AND    : TACData -> TACData -> (dst: TACData) -> TACOp1
+  OR     : TACData -> TACData -> (dst: TACData) -> TACOp1
+  XOR    : TACData -> TACData -> (dst: TACData) -> TACOp1
+  EQ     : TACData -> TACData -> (dst: TACData) -> TACOp1
+  LTU    : TACData -> TACData -> (dst: TACData) -> TACOp1
+  LT     : TACData -> TACData -> (dst: TACData) -> TACOp1
+  MUX21  : TACData -> TACData -> TACData -> (dst: TACData) -> TACOp1
+  SLL    : Nat     -> TACData -> (dst: TACData) -> TACOp1
+  SRL    : Nat     -> TACData -> (dst: TACData) -> TACOp1
+  SRA    : Nat     -> TACData -> (dst: TACData) -> TACOp1
+  NOT    : TACData -> (dst: TACData) -> TACOp1
+  SLICE  : Nat -> Nat -> TACData -> (dst: TACData) -> TACOp1
 
 public export
-genVar: TACTy -> State Nat TACData
-genVar ty = ST $ \c => Id (S c, Var (NM "x_\{show c}") ty)
+data TACAtom1 = Gl TACGl1 | Op TACOp1
+
+public export
+record TAC1 where
+  constructor MkTAC1
+  input : TACData
+  output: TACData
+  ops   : List TACAtom1
+
+public export
+data TACSt: Type where
+  MkSt: (name: Name) -> (ty: TACTy) -> TACSt
+  
+public export
+data TACGl2: Type where
+  IDX: TACData -> (idx: Nat) -> (dst: TACData) -> TACGl2
+
+public export
+data TACAtom2 = Gl2 TACGl2 | Op2 TACOp1
+
+public export
+record TAC2 where
+  constructor MkTAC2
+  input : TACData
+  output: TACData
+  ops   : List TACAtom2
+      
+-- public export
+-- record TAC2 where
+--   constructor MkTAC2
+--   get  : TACSt -> TACData 
+--   1 set  : TACData -> TACSt

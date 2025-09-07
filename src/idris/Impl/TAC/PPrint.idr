@@ -1,8 +1,10 @@
 module Impl.TAC.PPrint
 
-import Impl.TAC.Types
+import Impl.TAC.TAC
 import Data.BitVec 
 import Data.LC
+
+import System.File
 
 ppTy: TACTy -> String
 ppTy (BvTy width) = 
@@ -26,12 +28,12 @@ ppSt: TACSt -> String
 ppSt (MkSt name ty) = 
   "\{ppName name}: \{ppTy ty}"
   
-ppGl: TACGl1 -> String
-ppGl (PROD x y dst) = 
+ppGl1: TACGl1 -> String
+ppGl1 (PROD x y dst) = 
   "\{ppData dst} = (\{ppData x}, \{ppData y})"
-ppGl (PROJ1 x dst) = 
+ppGl1 (PROJ1 x dst) = 
   "\{ppData dst} = proj1 \{ppData x}"
-ppGl (PROJ2 x dst) = 
+ppGl1 (PROJ2 x dst) = 
   "\{ppData dst} = proj2 \{ppData x}"
 
 ppOp: TACOp1 -> String
@@ -66,16 +68,46 @@ ppOp (SRA k x dst) =
 ppOp (NOT x dst) = 
   "\{ppData dst} = not \{ppData x}"
 ppOp (SLICE k j x dst) = 
-  "\{ppData dst} = (\{ppData x})[\{show k}:\{show j}]"
+  "\{ppData dst} = (\{ppData x})<\{show k}:\{show j}>"
   
-ppAtom: TACAtom1 -> String
-ppAtom (Gl x) = ppGl x
-ppAtom (Op x) = ppOp x
+ppAtom1: TACAtom1 -> String
+ppAtom1 (Gl x) = ppGl1 x
+ppAtom1 (Op x) = ppOp x
 
 export
-ppTAC: (1 _: LC TACSt TAC1) -> List String
-ppTAC ((MkSt name ty) # (MkTAC1 input output ops)) = 
+ppTAC1: (1 _: LC TACSt TAC1) -> List String
+ppTAC1 ((MkSt name ty) # (MkTAC1 input output ops)) = 
   "input: \{ppData input}" 
   :: "output: \{ppData output}" 
   :: "state: \{ppSt (MkSt name ty)}" 
-  :: map ppAtom ops
+  :: map ppAtom1 ops
+
+ppGl2: TACGl2 -> String
+ppGl2 (IDX x idx dst) = 
+  "\{ppData dst} = \{ppData x}[\{show idx}]"
+
+ppAtom2: TACAtom2 -> String
+ppAtom2 (Gl2 x) = ppGl2 x
+ppAtom2 (Op2 x) = ppOp x
+
+export
+ppTAC2: (1 _: LC TACSt TAC2) -> List String
+ppTAC2 ((MkSt name ty) # (MkTAC2 input output ops)) = 
+  "input: \{ppData input}" 
+  :: "output: \{ppData output}" 
+  :: "state: \{ppSt (MkSt name ty)}" 
+  :: map ppAtom2 ops
+
+writeLns: File -> List String -> IO ()
+writeLns f [] = pure ()
+writeLns f (x :: xs) = do Right () <- fPutStrLn f x
+                            | Left err => printLn err
+                          writeLns f xs
+
+export
+ppDump: String -> List String -> IO ()
+ppDump name lns = 
+  do (Right f) <- openFile "\{name}.txt" WriteTruncate
+       | (Left err) => printLn err
+     writeLns f lns
+     closeFile f

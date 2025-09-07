@@ -5,6 +5,8 @@ import Examples.Sel
 import System.File
 import Data.List
 
+import Impl.TAC
+
 %hide Data.Linear.Interface.seq
 %hide Prelude.(>>=)
 %hide LState.(>>=)

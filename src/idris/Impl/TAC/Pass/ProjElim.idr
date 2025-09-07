@@ -1,90 +1,61 @@
 module Impl.TAC.Pass.ProjElim
 
-import Impl.TAC.Types
+import Impl.TAC.Common
 import Impl.TAC.TAC
+
+import Impl.TAC.Pass.Common
 import Data.List
 import Data.LC
 
-getGls: List TACAtom1 -> List TACGl1
-getGls [] = []
-getGls ((Gl x) :: xs) = x :: getGls xs
-getGls ((Op x) :: xs) = getGls xs
-
 data TACData' = P1 TACData | P2 TACData
 
-getProjDstSrc: List TACGl1 -> List (TACData, TACData')
-getProjDstSrc [] = []
-getProjDstSrc ((PROD  x y dst) :: xs) = 
-  getProjDstSrc xs
-getProjDstSrc ((PROJ1 x dst)   :: xs) = 
-  (dst, P1 x) :: getProjDstSrc xs
-getProjDstSrc ((PROJ2 x dst)   :: xs) = 
-  (dst, P2 x) :: getProjDstSrc xs
-
-getSrcVal: TACData' -> List TACGl1 -> Maybe TACData
-getSrcVal x [] = Nothing
-getSrcVal (P1 x) (p@(PROD y z dst) :: xs) = 
-  if x == dst then Just y else getSrcVal (P1 x) xs
-getSrcVal (P2 x) (p@(PROD y z dst) :: xs) = 
-  if x == dst then Just z else getSrcVal (P2 x) xs
-getSrcVal x (_ :: xs) = getSrcVal x xs
-
-getProjPair: List TACGl1 -> List (TACData, TACData)
-getProjPair xs = 
-  let dstSrcs = getProjDstSrc xs
-      dstMapsRaw = 
-        map (\(dst, src) => (dst, getSrcVal src xs)) 
-            dstSrcs
-  in foldl (\xs, (dst, src) => 
-         case src of
-           Nothing => xs
-           Just src => snoc xs (dst, src)) 
-      [] dstMapsRaw
-      
-dropDstMatch': (dst: TACData) 
-  -> List TACAtom1 -> List TACAtom1
-dropDstMatch' dst [] = []
-dropDstMatch' dst ((Gl x) :: xs) = 
+findVal: TACData' -> List TACAtom1 -> Maybe TACData
+findVal x [] = Nothing
+findVal x ((Gl $ PROD y z dst) :: xs) = 
   case x of
-       p@(PROD  y z w) => 
-         (Gl p) :: dropDstMatch' dst xs
-       p@(PROJ1 y z)   => 
-         if dst == z then xs 
-         else (Gl p) :: dropDstMatch' dst xs
-       p@(PROJ2 y z)   => 
-         if dst == z then xs 
-         else (Gl p) :: dropDstMatch' dst xs
-dropDstMatch' dst ((Op x) :: xs) = 
-  (Op x) :: dropDstMatch' dst xs
+       (P1 w) => 
+         if w == dst then Just y 
+                     else findVal x xs
+       (P2 w) => 
+         if w == dst then Just z 
+                     else findVal x xs
+findVal x (_ :: xs) = findVal x xs
 
-dropDstMatch: (dsts: List TACData) 
-  -> List TACAtom1 -> List TACAtom1
-dropDstMatch [] xs = xs
-dropDstMatch (x :: ys) xs = 
-  let rest = dropDstMatch' x xs
-  in dropDstMatch ys rest
+projElimStep: (Zipper TACAtom1, TACData) 
+            -> (Zipper TACAtom1, TACData)
+projElimStep (z@(MkZipper prev cur rest), out) = 
+  case cur of
+    Nothing  => (next z, out)
+    (Just x) => 
+      case x of
+        (Gl $ PROJ1 y dst) => 
+          case findVal (P1 y) prev of
+            Nothing  => (next z, out)
+            (Just w) => 
+              let rest' = substBy1 dst w rest
+                  z'    = next $ MkZipper prev Nothing rest'
+                  out'  = if out == dst then w else out
+              in (z', out')
+        (Gl $ PROJ2 y dst) => 
+          case findVal (P2 y) prev of
+            Nothing  => (next z, out)
+            (Just w) => 
+              let rest' = substBy1 dst w rest
+                  z'    = next $ MkZipper prev Nothing rest'
+                  out'  = if out == dst then w else out
+              in (z', out')
+        _ => (next z, out)
 
-substAll: List (TACData, TACData) 
-  -> List TACAtom1
-  -> List TACAtom1
-substAll [] ys = ys
-substAll ((old, new) :: xs) ys = 
-  let ys' = substBy1 old new ys
-  in substAll xs ys'
-
-substOut: List (TACData, TACData) 
-  -> TACData -> TACData
-substOut [] x = x
-substOut ((old, new) :: xs) x = 
-  if x == old then substOut xs new 
-  else substOut xs x
-
-public export
-projElim: (1 _: LC TACSt TAC1) -> LC TACSt TAC1
-projElim (l # (MkTAC1 input output ops)) = 
-  let gls       = getGls ops
-      projPairs = getProjPair gls
-      ops'      = dropDstMatch (map fst projPairs) ops
-      ops''     = substAll projPairs ops'
-      output'   = substOut (reverse projPairs) output
-  in l # (MkTAC1 input output' ops'')
+projElim': (Zipper TACAtom1, TACData) 
+        -> (Zipper TACAtom1, TACData)
+projElim' (z, y) = 
+  if isEnd z then projElimStep (z, y) -- ?projElim'_rhs_0
+  else (projElim' . projElimStep) (z, y)
+  
+  
+export
+projElim: (1 _: LC a TAC1) -> LC a TAC1
+projElim (st # tac@(MkTAC1 input output ops)) = 
+  let (ops', out') = projElim' (fromList ops, output) 
+      ops' = Common.toList ops'
+  in (st # {output := out', ops := ops'} tac)

@@ -110,7 +110,7 @@ mkFIR init weights sign reg =
              let o      = getLast  {n=S m} cur
                  stIni  = dropLast {n=S m} cur
                  wtTl   = proj2 weighted
-                 stIni' = pointwise adder' stIni wtTl
+                 stIni' = pointwise (adder' {n=(S (plus maxSht n))}) stIni wtTl
                  st'    = prod (proj1 weighted) stIni'
              _ <- firStSet rst skip st'
              pure o

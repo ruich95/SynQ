@@ -1,8 +1,11 @@
-module Impl.TAC.CombPrimitive
+module Impl.TAC.Comb.CombPrimitive
 
-import Impl.TAC.Types
+import Impl.TAC.Common
 import Impl.TAC.TAC
-import Sym.Comb
+import Impl.TAC.GenTAC
+
+import Sym.Comb.CombPrimitive
+
 import Data.Signal
 import Data.BitVec 
 import Data.List
@@ -80,7 +83,7 @@ Primitive TACComb where
     MkTACC $ do 
       (MkTAC1 _ outX opsX) <- x
       (MkTAC1 _ outY opsY) <- y
-      dst <- genVar (BvTy n)
+      dst <- genVar (BvTy 1)
       let op = Op $ EQ outX outY dst
       pure $ MkTAC1 U dst 
                     (opsX ++ opsY ++ [op])
@@ -89,7 +92,7 @@ Primitive TACComb where
     MkTACC $ do 
       (MkTAC1 _ outX opsX) <- x
       (MkTAC1 _ outY opsY) <- y
-      dst <- genVar (BvTy n)
+      dst <- genVar (BvTy 1)
       let op = Op $ LTU outX outY dst
       pure $ MkTAC1 U dst 
                     (opsX ++ opsY ++ [op])
@@ -98,7 +101,7 @@ Primitive TACComb where
     MkTACC $ do 
       (MkTAC1 _ outX opsX) <- x
       (MkTAC1 _ outY opsY) <- y
-      dst <- genVar (BvTy n)
+      dst <- genVar (BvTy 1)
       let op = Op $ LT outX outY dst
       pure $ MkTAC1 U dst 
                     (opsX ++ opsY ++ [op])
