@@ -23,9 +23,17 @@ adder: {n:_} -> (Comb comb, Primitive comb)
   => comb (BitVec n, BitVec n) (BitVec n)
 adder = lam $ \x => lower' n (add (proj1 x) (proj2 x))
 
+ttt: {n:_} -> (Comb comb, Primitive comb)
+  => comb () (BitVec n)
+ttt = app adder (prod (const $ BV 0) (const $ BV 1))
+
 inc: {n:_} -> (Comb comb, Primitive comb)
   => comb (BitVec n) (BitVec n)
 inc = lam $ \x => app adder (prod x $ const (BV 1))
+
+swap: {n:_} -> (Comb comb)
+  => comb (BitVec n, BitVec n) (BitVec n, BitVec n)
+swap = lam $ \x => prod (proj2 x) (proj1 x)
 
 idC: {n: _} -> (Comb comb, Primitive comb)
   => comb (BitVec n) (BitVec n)
@@ -139,6 +147,24 @@ dly2: (Seq comb seq)
   => (1 reg: Reg (BitVec 8) comb seq) 
   -> seq (!* (BitVec 8)) (BitVec 8) (BitVec 8)
 dly2 reg = abst $ \x => dlyc reg x
+
+dly3: (Seq comb seq)
+  => (1 reg: Reg (BitVec 8) comb seq) 
+  -> seq (!* (BitVec 8)) (BitVec 8) (BitVec 8)
+dly3 (MkReg get set) = 
+  abst $ \xin => do o <- get 
+                    _ <- set xin
+                    pure o
+
+dly4: (Seq comb seq)
+  => (1 reg: Reg (BitVec 8, BitVec 8) comb seq) 
+  -> seq (LPair (!* (BitVec 8)) (!* (BitVec 8))) (BitVec 8) (BitVec 8)
+dly4 (MkReg get set) = 
+  abst $ \xin => do xs <- get 
+                    let o = proj1 xs 
+                        nxt = prod (proj2 xs) xin 
+                    _ <- set nxt
+                    Seq.pure o 
 
 sysFn:(Comb comb, Primitive comb)
   => comb (BitVec 8, BitVec 8) (BitVec 8, BitVec 8)

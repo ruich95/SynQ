@@ -25,18 +25,14 @@ where
   get: {auto aIsSig: Sig a} -> {auto sIsState: St s}
     -> {auto similar: SameShape a s}
     -> TACSeq s () a
-  get = MkTACS $ LST 
-      $ \(MkBang c # (MkSt nm ty)) => 
-           (MkBang c # MkSt nm ty) 
-         # (MkTAC1 U (Var nm ty) [])
+  get = MkTACS $ pure $ \(MkSt st) => MkTAC1 U st []
                                      
   set: {auto aIsSig: Sig a} -> {auto sIsState: St s}
     -> {auto similar: SameShape a s}
     -> TACComb () a -> TACSeq s () ()
-  set (MkTACC x) = MkTACS $ LST 
-                 $ \(MkBang c # (MkSt name ty)) => 
-                     let (c', (MkTAC1 _ outX opsX)) = runState c x
-                     in (MkBang c' # MkSt name ty) 
-                      # (MkTAC1 U U 
-                           $ opsX 
-                           ++ [Op $ Var name ty ::= outX])
+  set (MkTACC f) = 
+    MkTACS $ LST $ \(MkBang c) => 
+      let (c', f') = runState c f 
+      in MkBang c' 
+       # \st => let op = st ::= f'.output
+                in MkTAC1 U U (snoc f'.ops op)

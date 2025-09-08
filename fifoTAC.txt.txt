@@ -1,0 +1,233 @@
+input: ((x_0, (x_1, x_2)), x_3): ((BV 1, (BV 32, BV 1)), BV 1)
+output: ((x_128, (x_67, x_122)), x_265): ((BV 1, (BV 32, BV 1)), BV 1)
+state: (st_267, ((st_268, st_269), ((st_270, st_271), ((st_272, st_273), (st_274, st_275))))): (BV 3, ((BV 32, BV 1), ((BV 32, BV 1), ((BV 32, BV 1), (BV 32, BV 1)))))
+x_13: BV 3 = not 3'd0: BV 3
+x_14: BV 4 = x_4: BV 3 + x_13: BV 3
+x_15: BV 3 = (x_14: BV 4)<0:3>
+x_16: BV 1 = x_15: BV 3 == 3'd0: BV 3
+x_17: BV 3 = not 3'd0: BV 3
+x_18: BV 4 = x_4: BV 3 + x_17: BV 3
+x_19: BV 3 = (x_18: BV 4)<0:3>
+x_20: BV 4 = 3'd0: BV 3 + 3'd1: BV 3
+x_21: BV 3 = (x_20: BV 4)<0:3>
+x_22: BV 1 = x_19: BV 3 == x_21: BV 3
+x_23: BV 3 = not 3'd0: BV 3
+x_24: BV 4 = x_4: BV 3 + x_23: BV 3
+x_25: BV 3 = (x_24: BV 4)<0:3>
+x_26: BV 4 = 3'd0: BV 3 + 3'd1: BV 3
+x_27: BV 3 = (x_26: BV 4)<0:3>
+x_28: BV 4 = x_27: BV 3 + 3'd1: BV 3
+x_29: BV 3 = (x_28: BV 4)<0:3>
+x_30: BV 1 = x_25: BV 3 == x_29: BV 3
+x_31: BV 32 = if x_30: BV 1 then x_9: BV 32 else x_11: BV 32
+x_32: BV 3 = not 3'd0: BV 3
+x_33: BV 4 = x_4: BV 3 + x_32: BV 3
+x_34: BV 3 = (x_33: BV 4)<0:3>
+x_35: BV 4 = 3'd0: BV 3 + 3'd1: BV 3
+x_36: BV 3 = (x_35: BV 4)<0:3>
+x_37: BV 4 = x_36: BV 3 + 3'd1: BV 3
+x_38: BV 3 = (x_37: BV 4)<0:3>
+x_39: BV 1 = x_34: BV 3 == x_38: BV 3
+x_40: BV 1 = if x_39: BV 1 then x_10: BV 1 else x_12: BV 1
+x_41: BV 32 = if x_22: BV 1 then x_7: BV 32 else x_31: BV 32
+x_42: BV 3 = not 3'd0: BV 3
+x_43: BV 4 = x_4: BV 3 + x_42: BV 3
+x_44: BV 3 = (x_43: BV 4)<0:3>
+x_45: BV 4 = 3'd0: BV 3 + 3'd1: BV 3
+x_46: BV 3 = (x_45: BV 4)<0:3>
+x_47: BV 1 = x_44: BV 3 == x_46: BV 3
+x_48: BV 3 = not 3'd0: BV 3
+x_49: BV 4 = x_4: BV 3 + x_48: BV 3
+x_50: BV 3 = (x_49: BV 4)<0:3>
+x_51: BV 4 = 3'd0: BV 3 + 3'd1: BV 3
+x_52: BV 3 = (x_51: BV 4)<0:3>
+x_53: BV 4 = x_52: BV 3 + 3'd1: BV 3
+x_54: BV 3 = (x_53: BV 4)<0:3>
+x_55: BV 1 = x_50: BV 3 == x_54: BV 3
+x_56: BV 32 = if x_55: BV 1 then x_9: BV 32 else x_11: BV 32
+x_57: BV 3 = not 3'd0: BV 3
+x_58: BV 4 = x_4: BV 3 + x_57: BV 3
+x_59: BV 3 = (x_58: BV 4)<0:3>
+x_60: BV 4 = 3'd0: BV 3 + 3'd1: BV 3
+x_61: BV 3 = (x_60: BV 4)<0:3>
+x_62: BV 4 = x_61: BV 3 + 3'd1: BV 3
+x_63: BV 3 = (x_62: BV 4)<0:3>
+x_64: BV 1 = x_59: BV 3 == x_63: BV 3
+x_65: BV 1 = if x_64: BV 1 then x_10: BV 1 else x_12: BV 1
+x_66: BV 1 = if x_47: BV 1 then x_8: BV 1 else x_65: BV 1
+x_67: BV 32 = if x_16: BV 1 then x_5: BV 32 else x_41: BV 32
+x_68: BV 3 = not 3'd0: BV 3
+x_69: BV 4 = x_4: BV 3 + x_68: BV 3
+x_70: BV 3 = (x_69: BV 4)<0:3>
+x_71: BV 1 = x_70: BV 3 == 3'd0: BV 3
+x_72: BV 3 = not 3'd0: BV 3
+x_73: BV 4 = x_4: BV 3 + x_72: BV 3
+x_74: BV 3 = (x_73: BV 4)<0:3>
+x_75: BV 4 = 3'd0: BV 3 + 3'd1: BV 3
+x_76: BV 3 = (x_75: BV 4)<0:3>
+x_77: BV 1 = x_74: BV 3 == x_76: BV 3
+x_78: BV 3 = not 3'd0: BV 3
+x_79: BV 4 = x_4: BV 3 + x_78: BV 3
+x_80: BV 3 = (x_79: BV 4)<0:3>
+x_81: BV 4 = 3'd0: BV 3 + 3'd1: BV 3
+x_82: BV 3 = (x_81: BV 4)<0:3>
+x_83: BV 4 = x_82: BV 3 + 3'd1: BV 3
+x_84: BV 3 = (x_83: BV 4)<0:3>
+x_85: BV 1 = x_80: BV 3 == x_84: BV 3
+x_86: BV 32 = if x_85: BV 1 then x_9: BV 32 else x_11: BV 32
+x_87: BV 3 = not 3'd0: BV 3
+x_88: BV 4 = x_4: BV 3 + x_87: BV 3
+x_89: BV 3 = (x_88: BV 4)<0:3>
+x_90: BV 4 = 3'd0: BV 3 + 3'd1: BV 3
+x_91: BV 3 = (x_90: BV 4)<0:3>
+x_92: BV 4 = x_91: BV 3 + 3'd1: BV 3
+x_93: BV 3 = (x_92: BV 4)<0:3>
+x_94: BV 1 = x_89: BV 3 == x_93: BV 3
+x_95: BV 1 = if x_94: BV 1 then x_10: BV 1 else x_12: BV 1
+x_96: BV 32 = if x_77: BV 1 then x_7: BV 32 else x_86: BV 32
+x_97: BV 3 = not 3'd0: BV 3
+x_98: BV 4 = x_4: BV 3 + x_97: BV 3
+x_99: BV 3 = (x_98: BV 4)<0:3>
+x_100: BV 4 = 3'd0: BV 3 + 3'd1: BV 3
+x_101: BV 3 = (x_100: BV 4)<0:3>
+x_102: BV 1 = x_99: BV 3 == x_101: BV 3
+x_103: BV 3 = not 3'd0: BV 3
+x_104: BV 4 = x_4: BV 3 + x_103: BV 3
+x_105: BV 3 = (x_104: BV 4)<0:3>
+x_106: BV 4 = 3'd0: BV 3 + 3'd1: BV 3
+x_107: BV 3 = (x_106: BV 4)<0:3>
+x_108: BV 4 = x_107: BV 3 + 3'd1: BV 3
+x_109: BV 3 = (x_108: BV 4)<0:3>
+x_110: BV 1 = x_105: BV 3 == x_109: BV 3
+x_111: BV 32 = if x_110: BV 1 then x_9: BV 32 else x_11: BV 32
+x_112: BV 3 = not 3'd0: BV 3
+x_113: BV 4 = x_4: BV 3 + x_112: BV 3
+x_114: BV 3 = (x_113: BV 4)<0:3>
+x_115: BV 4 = 3'd0: BV 3 + 3'd1: BV 3
+x_116: BV 3 = (x_115: BV 4)<0:3>
+x_117: BV 4 = x_116: BV 3 + 3'd1: BV 3
+x_118: BV 3 = (x_117: BV 4)<0:3>
+x_119: BV 1 = x_114: BV 3 == x_118: BV 3
+x_120: BV 1 = if x_119: BV 1 then x_10: BV 1 else x_12: BV 1
+x_121: BV 1 = if x_102: BV 1 then x_8: BV 1 else x_120: BV 1
+x_122: BV 1 = if x_71: BV 1 then x_6: BV 1 else x_121: BV 1
+x_125: BV 1 = x_4: BV 3 == 3'd0: BV 3
+x_126: BV 1 = not x_125: BV 1
+x_128: BV 1 = 1'd1: BV 1 & x_126: BV 1
+x_149: BV 1 = x_132: BV 3 == 3'd0: BV 3
+x_150: BV 1 = not x_149: BV 1
+x_151: BV 1 = x_150: BV 1 & x_3: BV 1
+x_152: BV 3 = not 3'd0: BV 3
+x_153: BV 4 = x_132: BV 3 + x_152: BV 3
+x_154: BV 3 = (x_153: BV 4)<0:3>
+x_155: BV 3 = if x_151: BV 1 then x_154: BV 3 else x_132: BV 3
+x_156: BV 1 = x_155: BV 3 <U 3'd4: BV 3
+x_157: BV 1 = x_156: BV 1 & x_0: BV 1
+x_158: BV 1 = x_132: BV 3 == 3'd0: BV 3
+x_159: BV 1 = not x_158: BV 1
+x_160: BV 1 = x_159: BV 1 & x_3: BV 1
+x_161: BV 3 = not 3'd0: BV 3
+x_162: BV 4 = x_132: BV 3 + x_161: BV 3
+x_163: BV 3 = (x_162: BV 4)<0:3>
+x_164: BV 3 = if x_160: BV 1 then x_163: BV 3 else x_132: BV 3
+x_165: BV 4 = x_164: BV 3 + 3'd1: BV 3
+x_166: BV 3 = (x_165: BV 4)<0:3>
+x_167: BV 1 = x_132: BV 3 == 3'd0: BV 3
+x_168: BV 1 = not x_167: BV 1
+x_169: BV 1 = x_168: BV 1 & x_3: BV 1
+x_170: BV 3 = not 3'd0: BV 3
+x_171: BV 4 = x_132: BV 3 + x_170: BV 3
+x_172: BV 3 = (x_171: BV 4)<0:3>
+x_173: BV 3 = if x_169: BV 1 then x_172: BV 3 else x_132: BV 3
+x_174: BV 3 = if x_157: BV 1 then x_166: BV 3 else x_173: BV 3
+x_175: BV 3 = if 1'd1: BV 1 then x_174: BV 3 else 3'd0: BV 3
+x_176: BV 1 = x_132: BV 3 == 3'd0: BV 3
+x_177: BV 1 = not x_176: BV 1
+x_178: BV 1 = x_177: BV 1 & x_3: BV 1
+x_179: BV 3 = not 3'd0: BV 3
+x_180: BV 4 = x_132: BV 3 + x_179: BV 3
+x_181: BV 3 = (x_180: BV 4)<0:3>
+x_182: BV 3 = if x_178: BV 1 then x_181: BV 3 else x_132: BV 3
+x_183: BV 1 = x_182: BV 3 <U 3'd4: BV 3
+x_184: BV 1 = x_183: BV 1 & x_0: BV 1
+x_185: BV 32 = if x_184: BV 1 then x_141: BV 32 else x_133: BV 32
+x_186: BV 1 = x_132: BV 3 == 3'd0: BV 3
+x_187: BV 1 = not x_186: BV 1
+x_188: BV 1 = x_187: BV 1 & x_3: BV 1
+x_189: BV 3 = not 3'd0: BV 3
+x_190: BV 4 = x_132: BV 3 + x_189: BV 3
+x_191: BV 3 = (x_190: BV 4)<0:3>
+x_192: BV 3 = if x_188: BV 1 then x_191: BV 3 else x_132: BV 3
+x_193: BV 1 = x_192: BV 3 <U 3'd4: BV 3
+x_194: BV 1 = x_193: BV 1 & x_0: BV 1
+x_195: BV 1 = if x_194: BV 1 then x_142: BV 1 else x_134: BV 1
+x_196: BV 1 = x_132: BV 3 == 3'd0: BV 3
+x_197: BV 1 = not x_196: BV 1
+x_198: BV 1 = x_197: BV 1 & x_3: BV 1
+x_199: BV 3 = not 3'd0: BV 3
+x_200: BV 4 = x_132: BV 3 + x_199: BV 3
+x_201: BV 3 = (x_200: BV 4)<0:3>
+x_202: BV 3 = if x_198: BV 1 then x_201: BV 3 else x_132: BV 3
+x_203: BV 1 = x_202: BV 3 <U 3'd4: BV 3
+x_204: BV 1 = x_203: BV 1 & x_0: BV 1
+x_205: BV 32 = if x_204: BV 1 then x_143: BV 32 else x_135: BV 32
+x_206: BV 1 = x_132: BV 3 == 3'd0: BV 3
+x_207: BV 1 = not x_206: BV 1
+x_208: BV 1 = x_207: BV 1 & x_3: BV 1
+x_209: BV 3 = not 3'd0: BV 3
+x_210: BV 4 = x_132: BV 3 + x_209: BV 3
+x_211: BV 3 = (x_210: BV 4)<0:3>
+x_212: BV 3 = if x_208: BV 1 then x_211: BV 3 else x_132: BV 3
+x_213: BV 1 = x_212: BV 3 <U 3'd4: BV 3
+x_214: BV 1 = x_213: BV 1 & x_0: BV 1
+x_215: BV 1 = if x_214: BV 1 then x_144: BV 1 else x_136: BV 1
+x_216: BV 1 = x_132: BV 3 == 3'd0: BV 3
+x_217: BV 1 = not x_216: BV 1
+x_218: BV 1 = x_217: BV 1 & x_3: BV 1
+x_219: BV 3 = not 3'd0: BV 3
+x_220: BV 4 = x_132: BV 3 + x_219: BV 3
+x_221: BV 3 = (x_220: BV 4)<0:3>
+x_222: BV 3 = if x_218: BV 1 then x_221: BV 3 else x_132: BV 3
+x_223: BV 1 = x_222: BV 3 <U 3'd4: BV 3
+x_224: BV 1 = x_223: BV 1 & x_0: BV 1
+x_225: BV 32 = if x_224: BV 1 then x_145: BV 32 else x_137: BV 32
+x_226: BV 1 = x_132: BV 3 == 3'd0: BV 3
+x_227: BV 1 = not x_226: BV 1
+x_228: BV 1 = x_227: BV 1 & x_3: BV 1
+x_229: BV 3 = not 3'd0: BV 3
+x_230: BV 4 = x_132: BV 3 + x_229: BV 3
+x_231: BV 3 = (x_230: BV 4)<0:3>
+x_232: BV 3 = if x_228: BV 1 then x_231: BV 3 else x_132: BV 3
+x_233: BV 1 = x_232: BV 3 <U 3'd4: BV 3
+x_234: BV 1 = x_233: BV 1 & x_0: BV 1
+x_235: BV 1 = if x_234: BV 1 then x_146: BV 1 else x_138: BV 1
+x_236: BV 1 = x_132: BV 3 == 3'd0: BV 3
+x_237: BV 1 = not x_236: BV 1
+x_238: BV 1 = x_237: BV 1 & x_3: BV 1
+x_239: BV 3 = not 3'd0: BV 3
+x_240: BV 4 = x_132: BV 3 + x_239: BV 3
+x_241: BV 3 = (x_240: BV 4)<0:3>
+x_242: BV 3 = if x_238: BV 1 then x_241: BV 3 else x_132: BV 3
+x_243: BV 1 = x_242: BV 3 <U 3'd4: BV 3
+x_244: BV 1 = x_243: BV 1 & x_0: BV 1
+x_245: BV 32 = if x_244: BV 1 then x_147: BV 32 else x_139: BV 32
+x_246: BV 1 = x_132: BV 3 == 3'd0: BV 3
+x_247: BV 1 = not x_246: BV 1
+x_248: BV 1 = x_247: BV 1 & x_3: BV 1
+x_249: BV 3 = not 3'd0: BV 3
+x_250: BV 4 = x_132: BV 3 + x_249: BV 3
+x_251: BV 3 = (x_250: BV 4)<0:3>
+x_252: BV 3 = if x_248: BV 1 then x_251: BV 3 else x_132: BV 3
+x_253: BV 1 = x_252: BV 3 <U 3'd4: BV 3
+x_254: BV 1 = x_253: BV 1 & x_0: BV 1
+x_255: BV 1 = if x_254: BV 1 then x_148: BV 1 else x_140: BV 1
+(st_267, ((st_268, st_269), ((st_270, st_271), ((st_272, st_273), (st_274, st_275))))): (BV 3, ((BV 32, BV 1), ((BV 32, BV 1), ((BV 32, BV 1), (BV 32, BV 1))))) ::= (x_175, ((x_185, x_195), ((x_205, x_215), ((x_225, x_235), (x_245, x_255))))): (BV 3, ((BV 32, BV 1), ((BV 32, BV 1), ((BV 32, BV 1), (BV 32, BV 1)))))
+x_257: BV 1 = x_132: BV 3 == 3'd0: BV 3
+x_258: BV 1 = not x_257: BV 1
+x_259: BV 1 = x_258: BV 1 & x_3: BV 1
+x_260: BV 3 = not 3'd0: BV 3
+x_261: BV 4 = x_132: BV 3 + x_260: BV 3
+x_262: BV 3 = (x_261: BV 4)<0:3>
+x_263: BV 3 = if x_259: BV 1 then x_262: BV 3 else x_132: BV 3
+x_264: BV 1 = x_263: BV 3 <U 3'd4: BV 3
+x_265: BV 1 = 1'd1: BV 1 & x_264: BV 1

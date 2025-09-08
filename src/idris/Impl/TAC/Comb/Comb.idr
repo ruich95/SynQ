@@ -18,44 +18,33 @@ Comb TACComb where
     in MkTACC 
          $ do var <- genVar tya 
               let in' = MkTAC1 U var []
-              res <- genTacC $ f (MkTACC $ pure in')
+              res <- genTACC $ f (MkTACC $ pure in')
               pure $ {input := var} res
   
   app (MkTACC f) (MkTACC x)  = 
     MkTACC $ 
-      do (MkTAC1 _  outX opsX) <- x
+      do x <- x
          f <- f
-         let (MkTAC1 _ outY opsY) = substInput1 f outX
-         pure $ MkTAC1 U outY (opsX ++ opsY)
+         let f' = substTAC1 f.input x.output f
+         pure $ MkTAC1 U f'.output (x.ops ++ f'.ops)
                 
   prod (MkTACC x) (MkTACC y) = 
     MkTACC $ 
-      do (MkTAC1 _ outX opsX) <- x
-         (MkTAC1 _ outY opsY) <- y
-         let outXTy = getTy outX
-             outYTy = getTy outY
-             outTy  = ProdTy outXTy outYTy
-         outVar <- genVar outTy
-         let prodOp: TACAtom1 = Gl $ PROD outX outY outVar
-         pure $ MkTAC1 U outVar $ opsX ++ opsY ++ [prodOp]
+      do x <- x
+         y <- y
+         pure 
+           $ MkTAC1 U (prodData x.output y.output) 
+               $ x.ops ++ y.ops
                    
   proj1 (MkTACC x) = 
     MkTACC $ 
-      do (MkTAC1 _ outX opsX) <- x
-         let outXTy = getTy outX
-             outTy  = proj1Ty outXTy
-         outVar <- genVar outTy
-         let proj1Op: TACAtom1 = Gl $ PROJ1 outX outVar
-         pure $ MkTAC1 U outVar $ snoc opsX proj1Op
+      do x <- x
+         pure $ {output $= proj1Data} x
                 
   proj2 (MkTACC x) = 
     MkTACC $ 
-      do (MkTAC1 _ outX opsX) <- x
-         let outXTy = getTy outX
-             outTy  = proj2Ty outXTy
-         outVar <- genVar outTy
-         let proj2Op: TACAtom1 = Gl $ PROJ2 outX outVar
-         pure $ MkTAC1 U outVar $ snoc opsX proj2Op
+      do x <- x
+         pure $ {output $= proj2Data} x
   
   unit = MkTACC $ ST $ \c => Id (c, MkTAC1 U U [])
 

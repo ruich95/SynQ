@@ -22,7 +22,7 @@ Primitive TACComb where
       (MkTAC1 _ outX opsX) <- x
       (MkTAC1 _ outY opsY) <- y
       dst <- genVar (BvTy $ S n)
-      let op = Op $ ADD outX outY dst
+      let op = ADD outX outY dst
       pure $ MkTAC1 U dst 
                     (opsX ++ opsY ++ [op])
                                    
@@ -31,7 +31,7 @@ Primitive TACComb where
       (MkTAC1 _ outX opsX) <- x
       (MkTAC1 _ outY opsY) <- y
       dst <- genVar (BvTy $ m + n)
-      let op = Op $ CONCAT outX outY dst
+      let op = CONCAT outX outY dst
       pure $ MkTAC1 U dst 
                     (opsX ++ opsY ++ [op])
   
@@ -39,7 +39,7 @@ Primitive TACComb where
     MkTACC $ do 
       (MkTAC1 _ outX opsX) <- x
       dst <- genVar (BvTy n)
-      let op = Op $ NOT outX dst
+      let op = NOT outX dst
       pure $ MkTAC1 U dst 
                     (opsX ++ [op])
     
@@ -48,7 +48,7 @@ Primitive TACComb where
       (MkTAC1 _ outX opsX) <- x
       (MkTAC1 _ outY opsY) <- y
       dst <- genVar (BvTy n)
-      let op = Op $ AND outX outY dst
+      let op = AND outX outY dst
       pure $ MkTAC1 U dst 
                     (opsX ++ opsY ++ [op])
   
@@ -57,7 +57,7 @@ Primitive TACComb where
       (MkTAC1 _ outX opsX) <- x
       (MkTAC1 _ outY opsY) <- y
       dst <- genVar (BvTy n)
-      let op = Op $ OR outX outY dst
+      let op = OR outX outY dst
       pure $ MkTAC1 U dst 
                     (opsX ++ opsY ++ [op])
   
@@ -66,7 +66,7 @@ Primitive TACComb where
       (MkTAC1 _ outX opsX) <- x
       (MkTAC1 _ outY opsY) <- y
       dst <- genVar (BvTy n)
-      let op = Op $ XOR outX outY dst
+      let op = XOR outX outY dst
       pure $ MkTAC1 U dst 
                     (opsX ++ opsY ++ [op])
   
@@ -75,7 +75,7 @@ Primitive TACComb where
     MkTACC $ do 
       (MkTAC1 _ outX opsX) <- x
       dst <- genVar (BvTy $ upper `minus` lower)
-      let op = Op $ SLICE lower upper outX dst
+      let op = SLICE lower upper outX dst
       pure $ MkTAC1 U dst 
                     (opsX ++ [op])
   
@@ -84,7 +84,7 @@ Primitive TACComb where
       (MkTAC1 _ outX opsX) <- x
       (MkTAC1 _ outY opsY) <- y
       dst <- genVar (BvTy 1)
-      let op = Op $ EQ outX outY dst
+      let op = EQ outX outY dst
       pure $ MkTAC1 U dst 
                     (opsX ++ opsY ++ [op])
   
@@ -93,7 +93,7 @@ Primitive TACComb where
       (MkTAC1 _ outX opsX) <- x
       (MkTAC1 _ outY opsY) <- y
       dst <- genVar (BvTy 1)
-      let op = Op $ LTU outX outY dst
+      let op = LTU outX outY dst
       pure $ MkTAC1 U dst 
                     (opsX ++ opsY ++ [op])
                                    
@@ -102,7 +102,7 @@ Primitive TACComb where
       (MkTAC1 _ outX opsX) <- x
       (MkTAC1 _ outY opsY) <- y
       dst <- genVar (BvTy 1)
-      let op = Op $ LT outX outY dst
+      let op = LT outX outY dst
       pure $ MkTAC1 U dst 
                     (opsX ++ opsY ++ [op])
                                    
@@ -112,7 +112,7 @@ Primitive TACComb where
       (MkTAC1 _ outX opsX) <- x
       (MkTAC1 _ outY opsY) <- y
       dst <- genVar (BvTy n)
-      let op = Op $ MUX21 outB outX outY dst
+      let op = MUX21 outB outX outY dst
       pure $ MkTAC1 U dst 
                     (opsB ++ opsX ++ opsY ++ [op])
                                        
@@ -120,7 +120,7 @@ Primitive TACComb where
     MkTACC $ do 
       (MkTAC1 _ outX opsX) <- x
       dst <- genVar (BvTy n)
-      let op = Op $ SLL sht outX dst
+      let op = SLL sht outX dst
       pure $ MkTAC1 U dst 
                     (opsX ++ [op])
 
@@ -128,7 +128,7 @@ Primitive TACComb where
     MkTACC $ do 
       (MkTAC1 _ outX opsX) <- x
       dst <- genVar (BvTy n)
-      let op = Op $ SRL sht outX dst
+      let op = SRL sht outX dst
       pure $ MkTAC1 U dst 
                     (opsX ++ [op])
     
@@ -136,7 +136,7 @@ Primitive TACComb where
     MkTACC $ do 
       (MkTAC1 _ outX opsX) <- x
       dst <- genVar (BvTy n)
-      let op = Op $ SRA sht outX dst
+      let op = SRA sht outX dst
       pure $ MkTAC1 U dst 
                     (opsX ++ [op])
 

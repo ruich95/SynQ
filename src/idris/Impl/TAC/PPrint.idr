@@ -13,90 +13,70 @@ ppTy (ProdTy a b) =
   "(\{ppTy a}, \{ppTy b})"
 ppTy UnitTy = "()"
 
-ppName: Name -> String
-ppName Anon = "_"
-ppName (NM str) = str
+-- ppName: Name -> String
+-- ppName Anon = "_"
+-- ppName (NM str) = str
 
+ppData': (p: String) -> TACData -> String
+ppData' _ (Const x) = "\{show x}"
+ppData' _ U = "()"
+ppData' p (SVar label ty1) = 
+  "\{p}_\{show label}"
+ppData' p (CVar d1 d2 ty1) = 
+  "(\{ppData' p d1}, \{ppData' p d2})"
+
+export
 ppData: TACData -> String
-ppData (Const {n} x) = 
-  "\{show x}: BV \{show n}"
-ppData U = "() : ()"
-ppData (Var nm ty1) = 
-  "\{ppName nm}: \{ppTy ty1}"
+ppData x = 
+  let ty = getTy x 
+  in "\{ppData' "x" x}: \{ppTy ty}"
+
 
 ppSt: TACSt -> String
-ppSt (MkSt name ty) = 
-  "\{ppName name}: \{ppTy ty}"
-  
-ppGl1: TACGl1 -> String
-ppGl1 (PROD x y dst) = 
-  "\{ppData dst} = (\{ppData x}, \{ppData y})"
-ppGl1 (PROJ1 x dst) = 
-  "\{ppData dst} = proj1 \{ppData x}"
-ppGl1 (PROJ2 x dst) = 
-  "\{ppData dst} = proj2 \{ppData x}"
+ppSt (MkSt x) = 
+  let ty = getTy x 
+  in "\{ppData' "st" x}: \{ppTy ty}"
 
-ppOp: TACOp1 -> String
-ppOp (x ::= y) = 
-  "\{ppData x} ::= \{ppData y}"
-ppOp (x <<= y) = 
-  "\{ppData x} <<= \{ppData y}"
-ppOp (ADD x y dst) = 
+export  
+ppOp1: TACOp1 -> String
+ppOp1 (x ::= y) = 
+  "\{ppSt x} ::= \{ppData y}"
+ppOp1 (ADD x y dst) = 
   "\{ppData dst} = \{ppData x} + \{ppData y}"
-ppOp (CONCAT x y dst) = 
+ppOp1 (CONCAT x y dst) = 
   "\{ppData dst} = \{ppData x} :: \{ppData y}"
-ppOp (AND x y dst) = 
+ppOp1 (AND x y dst) = 
   "\{ppData dst} = \{ppData x} & \{ppData y}"
-ppOp (OR x y dst) = 
+ppOp1 (OR x y dst) = 
   "\{ppData dst} = \{ppData x} | \{ppData y}"
-ppOp (XOR x y dst) = 
+ppOp1 (XOR x y dst) = 
   "\{ppData dst} = \{ppData x} ^ \{ppData y}"
-ppOp (EQ x y dst) = 
+ppOp1 (EQ x y dst) = 
   "\{ppData dst} = \{ppData x} == \{ppData y}"
-ppOp (LTU x y dst) = 
+ppOp1 (LTU x y dst) = 
   "\{ppData dst} = \{ppData x} <U \{ppData y}"
-ppOp (LT x y dst) = 
+ppOp1 (LT x y dst) = 
   "\{ppData dst} = \{ppData x} <S \{ppData y}"
-ppOp (MUX21 x y z dst) = 
+ppOp1 (MUX21 x y z dst) = 
   "\{ppData dst} = if \{ppData x} then \{ppData y} else \{ppData z}"
-ppOp (SLL k x dst) = 
+ppOp1 (SLL k x dst) = 
   "\{ppData dst} = \{ppData x} << \{show k}"
-ppOp (SRL k x dst) = 
+ppOp1 (SRL k x dst) = 
   "\{ppData dst} = \{ppData x} >> \{show k}"
-ppOp (SRA k x dst) = 
+ppOp1 (SRA k x dst) = 
   "\{ppData dst} = \{ppData x} >>A \{show k}"
-ppOp (NOT x dst) = 
+ppOp1 (NOT x dst) = 
   "\{ppData dst} = not \{ppData x}"
-ppOp (SLICE k j x dst) = 
+ppOp1 (SLICE k j x dst) = 
   "\{ppData dst} = (\{ppData x})<\{show k}:\{show j}>"
-  
-ppAtom1: TACAtom1 -> String
-ppAtom1 (Gl x) = ppGl1 x
-ppAtom1 (Op x) = ppOp x
 
 export
-ppTAC1: (1 _: LC TACSt TAC1) -> List String
-ppTAC1 ((MkSt name ty) # (MkTAC1 input output ops)) = 
+ppTAC1: (TACSt, TAC1) -> List String
+ppTAC1 (st, MkTAC1 input output ops) = 
   "input: \{ppData input}" 
   :: "output: \{ppData output}" 
-  :: "state: \{ppSt (MkSt name ty)}" 
-  :: map ppAtom1 ops
-
-ppGl2: TACGl2 -> String
-ppGl2 (IDX x idx dst) = 
-  "\{ppData dst} = \{ppData x}[\{show idx}]"
-
-ppAtom2: TACAtom2 -> String
-ppAtom2 (Gl2 x) = ppGl2 x
-ppAtom2 (Op2 x) = ppOp x
-
-export
-ppTAC2: (1 _: LC TACSt TAC2) -> List String
-ppTAC2 ((MkSt name ty) # (MkTAC2 input output ops)) = 
-  "input: \{ppData input}" 
-  :: "output: \{ppData output}" 
-  :: "state: \{ppSt (MkSt name ty)}" 
-  :: map ppAtom2 ops
+  :: "state: \{ppSt st}" 
+  :: map ppOp1 ops
 
 writeLns: File -> List String -> IO ()
 writeLns f [] = pure ()
