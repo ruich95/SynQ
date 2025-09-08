@@ -1,7 +1,5 @@
 module Impl.TAC.Pass.Common
 
-import Impl.TAC.TAC
-
 import Data.List
 
 public export 

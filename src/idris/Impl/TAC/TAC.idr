@@ -73,6 +73,7 @@ Eq TACData where
   (==) _ _ = False
 
 export infixr 9 ::=
+export infixr 9 <<=
 
 public export
 data TACSt: Type where
@@ -90,6 +91,7 @@ prodSt (MkSt x) (MkSt y) = MkSt (prodData x y)
 public export
 data TACOp1: Type where
   (::=)  : (st: TACSt) -> (src: TACData) -> TACOp1
+  (<<=)  : (dst: TACData) -> (st: TACSt) -> TACOp1
   ADD    : (src1: TACData) -> (src2: TACData) -> (dst: TACData) -> TACOp1
   CONCAT : (src1: TACData) -> (src2: TACData) -> (dst: TACData) -> TACOp1
   AND    : (src1: TACData) -> (src2: TACData) -> (dst: TACData) -> TACOp1
@@ -109,6 +111,7 @@ data TACOp1: Type where
 export
 mapOperands: (TACData -> TACData) -> TACOp1 -> TACOp1
 mapOperands f (st ::= src)               = st ::= f src
+mapOperands f (dst <<= st)               = f dst <<= st
 mapOperands f (ADD src1 src2 dst)        = ADD (f src1) (f src2) (f dst)       
 mapOperands f (CONCAT src1 src2 dst)     = CONCAT (f src1) (f src2) (f dst)    
 mapOperands f (AND src1 src2 dst)        = AND (f src1) (f src2) (f dst)       

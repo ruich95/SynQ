@@ -41,6 +41,8 @@ export
 ppOp1: TACOp1 -> String
 ppOp1 (x ::= y) = 
   "\{ppSt x} ::= \{ppData y}"
+ppOp1 (x <<= y) = 
+  "\{ppData x} <<= \{ppSt y}"
 ppOp1 (ADD x y dst) = 
   "\{ppData dst} = \{ppData x} + \{ppData y}"
 ppOp1 (CONCAT x y dst) = 

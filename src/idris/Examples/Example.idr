@@ -6,7 +6,7 @@ import Impl.TAC
 import Data.Linear
 import Data.Nat
 -- import Data.State
-
+import Control.Monad.State
 
 %hide Prelude.(=<<)
 %hide CombLib.adder
@@ -22,10 +22,6 @@ lteSucc (S k) = LTESucc (lteSucc k)
 adder: {n:_} -> (Comb comb, Primitive comb)
   => comb (BitVec n, BitVec n) (BitVec n)
 adder = lam $ \x => lower' n (add (proj1 x) (proj2 x))
-
-ttt: {n:_} -> (Comb comb, Primitive comb)
-  => comb () (BitVec n)
-ttt = app adder (prod (const $ BV 0) (const $ BV 1))
 
 inc: {n:_} -> (Comb comb, Primitive comb)
   => comb (BitVec n) (BitVec n)

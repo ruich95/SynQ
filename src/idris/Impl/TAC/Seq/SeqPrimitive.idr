@@ -25,7 +25,12 @@ where
   get: {auto aIsSig: Sig a} -> {auto sIsState: St s}
     -> {auto similar: SameShape a s}
     -> TACSeq s () a
-  get = MkTACS $ pure $ \(MkSt st) => MkTAC1 U st []
+  get = MkTACS $ LST 
+          $ \(MkBang c) => 
+               let (c', var) = 
+                     runState c (genVar $ fromSig aIsSig)
+               in MkBang c' 
+                # \st => MkTAC1 U var [var <<= st]
                                      
   set: {auto aIsSig: Sig a} -> {auto sIsState: St s}
     -> {auto similar: SameShape a s}

@@ -30,20 +30,40 @@ fromSt (LP st1 st2) =
   ProdTy (fromSt st1) (fromSt st2)
 fromSt (LV {n}) = BvTy n
 
+export
+flatData: (old: TACData) -> (new: TACData) -> List (TACData, TACData)
+flatData (CVar d11 d12 ty1) (CVar d21 d22 ty2) = 
+  (flatData d11 d21) ++ (flatData d12 d22)
+flatData old new = [(old, new)]
+
+export
 --x[old => new]
-substData: (old: TACData) -> (new: TACData) 
+substData'': (old: TACData) -> (new: TACData) 
         -> TACData -> TACData
-substData old new x = 
+substData'' old new x = 
   if x == old then new 
   else case x of
          (CVar d1 d2 ty1) => 
-           let d1' = substData old new d1
+           let d1' = substData'' old new d1
                ty1 = getTy d1'
-               d2' = substData old new d2
+               d2' = substData'' old new d2
                ty2 = getTy d2'
            in CVar d1' d2' $ ProdTy ty1 ty2
          _ => x
-  
+
+substData': List (TACData, TACData)
+         -> TACData -> TACData
+substData' [] x = x
+substData' ((old, new) :: xs) x = 
+  let x' = substData'' old new x
+  in substData' xs x'
+
+export
+substData: (old: TACData) -> (new: TACData) 
+        -> TACData -> TACData
+substData old new x = 
+  substData' (flatData old new) x
+
 substOp1: (old: TACData) -> (new: TACData) 
        -> TACOp1 -> TACOp1
 substOp1 old new x = 
@@ -61,6 +81,7 @@ substTAC1 old new tac =
 public export
 getUsed: TACOp1 -> List TACData
 getUsed (x ::= y)         = [y]
+getUsed (dst <<= st)      = []
 getUsed (ADD x y dst)     = [x, y]
 getUsed (CONCAT x y dst)  = [x, y]
 getUsed (AND x y dst)     = [x, y]
@@ -79,6 +100,7 @@ getUsed (SLICE k j x dst) = [x]
 public export
 getDst: TACOp1 -> TACData
 getDst ((MkSt x) ::= y)  = x
+getDst (dst <<= st)      = dst
 getDst (ADD x y dst)     = dst
 getDst (CONCAT x y dst)  = dst
 getDst (AND x y dst)     = dst
