@@ -96,6 +96,7 @@ getUsed (SRL k x dst)     = [x]
 getUsed (SRA k x dst)     = [x]
 getUsed (NOT x dst)       = [x]
 getUsed (SLICE k j x dst) = [x]
+getUsed (MULT x y dst)    = [x, y]
 
 public export
 getDst: TACOp1 -> TACData
@@ -115,6 +116,7 @@ getDst (SRL k x dst)     = dst
 getDst (SRA k x dst)     = dst
 getDst (NOT x dst)       = dst
 getDst (SLICE k j x dst) = dst
+getDst (MULT _ _ dst)    = dst
 
 public export
 findDef: TACData -> List TACOp1 -> Maybe TACOp1

@@ -107,6 +107,7 @@ data TACOp1: Type where
   SRA    : Nat -> (src: TACData) -> (dst: TACData) -> TACOp1
   NOT    : (src: TACData) -> (dst: TACData) -> TACOp1
   SLICE  : Nat -> Nat -> (src: TACData) -> (dst: TACData) -> TACOp1
+  MULT   : (src1: TACData) -> (src2: TACData) -> (dst: TACData) -> TACOp1
 
 export
 mapOperands: (TACData -> TACData) -> TACOp1 -> TACOp1
@@ -126,6 +127,7 @@ mapOperands f (SRL k src dst)            = SRL k (f src) (f dst)
 mapOperands f (SRA k src dst)            = SRA k (f src) (f dst)           
 mapOperands f (NOT src dst)              = NOT (f src) (f dst)             
 mapOperands f (SLICE k j src dst)        = SLICE k j (f src) (f dst)
+mapOperands f (MULT src1 src2 dst)       = MULT (f src1) (f src2) (f dst)
 
 public export
 record TAC1 where

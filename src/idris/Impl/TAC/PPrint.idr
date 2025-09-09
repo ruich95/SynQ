@@ -71,6 +71,8 @@ ppOp1 (NOT x dst) =
   "\{ppData dst} = not \{ppData x}"
 ppOp1 (SLICE k j x dst) = 
   "\{ppData dst} = (\{ppData x})<\{show k}:\{show j}>"
+ppOp1 (MULT src1 src2 dst) = 
+  "\{ppData dst} = \{ppData src1} * \{ppData src2}"
 
 export
 ppTAC1: (TACSt, TAC1) -> List String
