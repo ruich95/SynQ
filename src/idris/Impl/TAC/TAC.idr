@@ -6,9 +6,6 @@ import Data.Linear
 import Data.State
 
 public export
-data Name = Anon | NM String
-
-public export
 data TACTy: Type where
   BvTy  : (width: Nat) -> TACTy
   ProdTy: (a: TACTy) -> (b: TACTy) -> TACTy
@@ -44,12 +41,6 @@ public export
 proj2Data: TACData -> TACData
 proj2Data (CVar d1 d2 ty1) = d2
 proj2Data _ = believe_me "impossible"
-
-public export
-Eq Name where
-  (==) Anon Anon = True
-  (==) (NM str1) (NM str2) = str1 == str2
-  (==) _ _ = False
 
 public export
 Eq TACTy where
@@ -136,3 +127,43 @@ record TAC1 where
   output: TACData
   ops   : List TACOp1
   
+public export
+getUsed: TACOp1 -> List TACData
+getUsed (x ::= y)         = [y]
+getUsed (dst <<= st)      = []
+getUsed (ADD x y dst)     = [x, y]
+getUsed (CONCAT x y dst)  = [x, y]
+getUsed (AND x y dst)     = [x, y]
+getUsed (OR x y dst)      = [x, y]
+getUsed (XOR x y dst)     = [x, y]
+getUsed (EQ x y dst)      = [x, y]
+getUsed (LTU x y dst)     = [x, y]
+getUsed (LT x y dst)      = [x, y]
+getUsed (MUX21 x y z dst) = [x, y, z]
+getUsed (SLL k x dst)     = [x]
+getUsed (SRL k x dst)     = [x]
+getUsed (SRA k x dst)     = [x]
+getUsed (NOT x dst)       = [x]
+getUsed (SLICE k j x dst) = [x]
+getUsed (MULT x y dst)    = [x, y]
+
+public export
+getDst: TACOp1 -> TACData
+getDst ((MkSt x) ::= y)  = x
+getDst (dst <<= st)      = dst
+getDst (ADD x y dst)     = dst
+getDst (CONCAT x y dst)  = dst
+getDst (AND x y dst)     = dst
+getDst (OR x y dst)      = dst
+getDst (XOR x y dst)     = dst
+getDst (EQ x y dst)      = dst
+getDst (LTU x y dst)     = dst
+getDst (LT x y dst)      = dst
+getDst (MUX21 x y z dst) = dst
+getDst (SLL k x dst)     = dst
+getDst (SRL k x dst)     = dst
+getDst (SRA k x dst)     = dst
+getDst (NOT x dst)       = dst
+getDst (SLICE k j x dst) = dst
+getDst (MULT _ _ dst)    = dst
+

@@ -1,17 +1,11 @@
 module Impl.TAC.Pass.DeadCodeElim
 
 import Impl.TAC.Common
-import Impl.TAC.TAC
+import Impl.TAC.FlatTAC
 
 import Impl.TAC.Pass.Common
 import Data.List
 import Data.LC
-
-isElement: (Eq a) => a -> List a -> Bool
-isElement x [] = False
-isElement x (y :: xs) = 
-  if x == y then True 
-  else isElement x xs
 
 isDead: TACData 
   -> (List TACAtom1, TACData) -> Bool

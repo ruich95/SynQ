@@ -45,3 +45,10 @@ next z@(MkZipper prev cur (x :: xs)) =
 public export
 drop: Zipper a -> Zipper a
 drop z = {cur := Nothing} z
+
+public export
+isElement: (Eq a) => a -> List a -> Bool
+isElement x [] = False
+isElement x (y :: xs) = 
+  if x == y then True 
+  else isElement x xs

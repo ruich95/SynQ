@@ -77,46 +77,16 @@ substTAC1 old new tac =
       substOps: List _ -> _ 
         = (map $ substOp1 old new)
   in {input $= subst, output $= subst, ops $= substOps} tac
+  
+public export
+interface Op op dat where
+  getSrc: op -> List dat
+  getDst: op -> dat
 
 public export
-getUsed: TACOp1 -> List TACData
-getUsed (x ::= y)         = [y]
-getUsed (dst <<= st)      = []
-getUsed (ADD x y dst)     = [x, y]
-getUsed (CONCAT x y dst)  = [x, y]
-getUsed (AND x y dst)     = [x, y]
-getUsed (OR x y dst)      = [x, y]
-getUsed (XOR x y dst)     = [x, y]
-getUsed (EQ x y dst)      = [x, y]
-getUsed (LTU x y dst)     = [x, y]
-getUsed (LT x y dst)      = [x, y]
-getUsed (MUX21 x y z dst) = [x, y, z]
-getUsed (SLL k x dst)     = [x]
-getUsed (SRL k x dst)     = [x]
-getUsed (SRA k x dst)     = [x]
-getUsed (NOT x dst)       = [x]
-getUsed (SLICE k j x dst) = [x]
-getUsed (MULT x y dst)    = [x, y]
-
-public export
-getDst: TACOp1 -> TACData
-getDst ((MkSt x) ::= y)  = x
-getDst (dst <<= st)      = dst
-getDst (ADD x y dst)     = dst
-getDst (CONCAT x y dst)  = dst
-getDst (AND x y dst)     = dst
-getDst (OR x y dst)      = dst
-getDst (XOR x y dst)     = dst
-getDst (EQ x y dst)      = dst
-getDst (LTU x y dst)     = dst
-getDst (LT x y dst)      = dst
-getDst (MUX21 x y z dst) = dst
-getDst (SLL k x dst)     = dst
-getDst (SRL k x dst)     = dst
-getDst (SRA k x dst)     = dst
-getDst (NOT x dst)       = dst
-getDst (SLICE k j x dst) = dst
-getDst (MULT _ _ dst)    = dst
+Op TACOp1 TACData where
+  getSrc = getUsed
+  getDst = TAC.getDst
 
 public export
 findDef: TACData -> List TACOp1 -> Maybe TACOp1
