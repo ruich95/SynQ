@@ -4,45 +4,77 @@ import Impl.TAC.TAC
 import Impl.TAC.Data
 import Impl.TAC.Pass.Common
 
-isGet: TACOp FTACData 
-  -> Maybe (TACSt FTACData)
-isGet (_ <<= st) = Just st
+FlatOp: Type
+FlatOp = TACOp FTACData 
+
+FlatSt: Type
+FlatSt = TACSt FTACData
+
+isGet: FlatOp -> Maybe (FTACData, FlatSt)
+isGet (dst <<= st) = Just (dst, st)
 isGet _ = Nothing
 
-isSet: TACOp FTACData -> Bool
-isSet (_ ::= _) = True
-isSet _ = False
+isSet: FlatOp -> Maybe (FlatSt, FTACData)
+isSet (st ::= src) = Just (st, src)
+isSet _ = Nothing
 
-findEarly: TACSt FTACData 
-  -> List (TACOp FTACData)
+SetCtx: Type
+SetCtx = List (FlatSt, FTACData)
+
+hasBeenSet: FlatSt -> SetCtx 
+  -> Maybe FTACData
+hasBeenSet x [] = Nothing
+hasBeenSet x ((y, z) :: xs) = 
+  if x == y then Just z 
+  else hasBeenSet x xs 
+
+findEarly: FlatSt -> List FlatOp 
   -> Maybe FTACData
 findEarly x [] = Nothing
 findEarly x (y :: xs) = 
   case isGet y of
        Nothing => findEarly x xs
-       (Just z) => if x == z 
-                   then (Just $ getDst y) 
-                   else findEarly x xs
+       (Just (dst, st)) => 
+         if x == st 
+         then Just dst 
+         else findEarly x xs
 
-getElim1Step: Zipper (TACOp FTACData) 
-  -> Zipper (TACOp FTACData)
-getElim1Step z@(MkZipper prev (Just x) rest) = 
-  case isGet x of 
-    Nothing => next z
-    (Just y) => 
-      let earlyDst = findEarly y prev
-      in case earlyDst of
-           Nothing => next z
-           (Just dst') =>
-             let updateFn: (List _ -> _) = 
-                   map $ \op => substOp 
-                                (getDst x) 
-                                dst' op
-             in next $ drop $ {rest $= updateFn} z
-getElim1Step z = next z
+getElimStep: SetCtx -> (Zipper FlatOp, List FTACData)
+  -> (SetCtx, Zipper FlatOp, List FTACData)
+getElimStep ctx (z@(MkZipper prev (Just op) rest), outs) = 
+  case isSet op of
+    (Just y) => (y :: ctx, next z, outs)
+    Nothing => 
+      case isGet op of
+        (Just (dst, st)) => 
+          case hasBeenSet st ctx of
+            (Just x) => 
+              let rest' = map (substOp dst x) rest
+                  outs' = map (subst dst x) outs 
+              in (ctx, next $ drop $ {rest := rest'} z, outs')
+            Nothing => 
+              case findEarly st prev of
+                (Just x) => 
+                  let rest' = map (substOp dst x) rest
+                      outs' = map (subst dst x) outs 
+                  in (ctx, next $ drop $ {rest := rest'} z, outs')
+                Nothing => (ctx, next z, outs)
+        Nothing => (ctx, next z, outs)
+getElimStep ctx (z, outs) = (ctx, next z, outs)
 
-getElim1: Zipper (TACOp FTACData) 
-  -> Zipper (TACOp FTACData)
--- getElim1 (MkZipper prev (Just x) rest) = ?getElim1_rhs_2
-getElim1 z = if isEnd z then getElim1Step z 
-             else getElim1 $ getElim1Step z 
+
+getElim': SetCtx -> (Zipper FlatOp, List FTACData)
+  -> (SetCtx, Zipper FlatOp, List FTACData)
+getElim' ctx x@(z, o) = 
+  if isEnd z then getElimStep ctx x
+  else let (ctx', x') = getElimStep ctx x
+       in getElim' ctx' x'
+
+export
+getElim: FTAC -> FTAC
+getElim tac@(MkFTAC input output state ops) = 
+  let ops' = fromList ops
+      (_, ops', o') = 
+        getElim' [] (ops', output)
+      ops' = Common.toList ops'
+  in {output := o', ops := ops'} tac

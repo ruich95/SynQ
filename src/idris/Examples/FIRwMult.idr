@@ -126,7 +126,7 @@ firState (S k) init (MkReg get set) =
       prf3 = sameShape {similar=similar} {n=S $ S k}
   in (\rst, skip, xs => 
          do cur <- get 
-            let nxt = if_ rst init $ if_ skip cur xs 
+            let nxt = (lam $ if_ rst init) << (if_ skip cur xs)
             set nxt) 
      # get
 
@@ -153,6 +153,7 @@ mkFIR init weights sign reg =
          firState {aIsSig=BV {n=n}} {sIsSt = LV {n=n}} m init reg 
       prf1 = repeatSt  {n=S m} {sIsSt=LV {n=n}}
       prf2 = repeatSig (S m) (BV {n=n})
+      prf3 = repeatSig (S m) (BV {n=(coefW+n)})
   in abst $ \xin => 
        let rst  = proj1 xin
            skip = proj1 $ proj2 xin
@@ -160,8 +161,8 @@ mkFIR init weights sign reg =
        in do cur' <- firStGet
              let cur = prod xin cur'
                  weighted 
-                   = neg (map not sign) 
-                   $ multKs {coefW=coefW} weights cur
+                   = (lam $ neg (map not sign))
+                       << (multKs {coefW=coefW} weights cur)
                  o = sum {m=S m} weighted
                  nxt = dropLast {aIsSig=BV {n=n}} {n=S m} cur
              _ <- firStSet rst skip nxt
