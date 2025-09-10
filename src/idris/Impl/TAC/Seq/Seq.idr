@@ -13,8 +13,8 @@ import Data.Linear
 import Data.List
 import Data.LC 
 
-import Impl.TAC.Common
 import Impl.TAC.TAC
+import Impl.TAC.Data
 import Impl.TAC.GenTAC
 import Impl.TAC.Comb
 
@@ -24,7 +24,7 @@ Seq TACComb TACSeq where
     $ LST $ \(MkBang c) => 
        let (c', varIn) = 
              runState c $ genVar $ fromSig aIsSig
-           input = MkTACC $ pure $ MkTAC1 U varIn []
+           input = MkTACC $ pure $ MkTAC U varIn (MkSt U) []
            (MkTACS $ LST f) = f input
            (c'' # f') = f (MkBang c')
        in c'' # \st => {input := varIn} $ f' st
@@ -41,9 +41,9 @@ Seq TACComb TACSeq where
                 pure $ \st => 
                   let f'  = f st
                       g'  = g st
-                      g'' = substTAC1 g'.input f'.output g'
-                  in MkTAC1 f'.input g''.output 
-                            (f'.ops ++ g''.ops)
+                      g'' = substTAC g'.input f'.output g'
+                  in MkTAC f'.input g''.output st
+                           (f'.ops ++ g''.ops)
   
   (<<<) (MkTACS g) (MkTACS f) = 
     MkTACS $ do f <- f 
@@ -52,9 +52,9 @@ Seq TACComb TACSeq where
                   let (st1, st2) = splitSt st
                       f'  = f st1
                       g'  = g st2
-                      g'' = substTAC1 g'.input f'.output g'
-                  in MkTAC1 f'.input g''.output 
-                            (f'.ops ++ g''.ops)
+                      g'' = substTAC g'.input f'.output g'
+                  in MkTAC f'.input g''.output st
+                           (f'.ops ++ g''.ops)
                 
   swap (MkTACS f) = 
     MkTACS $ do f <- f

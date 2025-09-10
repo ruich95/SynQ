@@ -13,7 +13,7 @@ import Data.Linear
 import Data.List
 import Data.LC 
 
-import Impl.TAC.Common
+import Impl.TAC.Data
 import Impl.TAC.TAC
 import Impl.TAC.GenTAC
 import Impl.TAC.Comb
@@ -30,7 +30,7 @@ where
                let (c', var) = 
                      runState c (genVar $ fromSig aIsSig)
                in MkBang c' 
-                # \st => MkTAC1 U var [var <<= st]
+                # \st => MkTAC U var st [var <<= st]
                                      
   set: {auto aIsSig: Sig a} -> {auto sIsState: St s}
     -> {auto similar: SameShape a s}
@@ -40,4 +40,4 @@ where
       let (c', f') = runState c f 
       in MkBang c' 
        # \st => let op = st ::= f'.output
-                in MkTAC1 U U (snoc f'.ops op)
+                in MkTAC U U st (snoc f'.ops op)

@@ -1,7 +1,7 @@
 module Impl.TAC.Comb.Comb
 
-import Impl.TAC.Common
 import Impl.TAC.TAC
+import Impl.TAC.Data
 import Impl.TAC.GenTAC
 
 import Sym.Comb.Comb
@@ -17,7 +17,7 @@ Comb TACComb where
     let tya = fromSig aIsSig
     in MkTACC 
          $ do var <- genVar tya 
-              let in' = MkTAC1 U var []
+              let in' = MkTAC U var (MkSt U) []
               res <- genTACC $ f (MkTACC $ pure in')
               pure $ {input := var} res
   
@@ -25,15 +25,15 @@ Comb TACComb where
     MkTACC $ 
       do x <- x
          f <- f
-         let f' = substTAC1 f.input x.output f
-         pure $ MkTAC1 U f'.output (x.ops ++ f'.ops)
+         let f' = substTAC f.input x.output f
+         pure $ MkTAC U f'.output (MkSt U) (x.ops ++ f'.ops)
                 
   prod (MkTACC x) (MkTACC y) = 
     MkTACC $ 
       do x <- x
          y <- y
          pure 
-           $ MkTAC1 U (prodData x.output y.output) 
+           $ MkTAC U (prodData x.output y.output) (MkSt U)
                $ x.ops ++ y.ops
                    
   proj1 (MkTACC x) = 
@@ -46,5 +46,5 @@ Comb TACComb where
       do x <- x
          pure $ {output $= proj2Data} x
   
-  unit = MkTACC $ ST $ \c => Id (c, MkTAC1 U U [])
+  unit = MkTACC $ ST $ \c => Id (c, MkTAC U U (MkSt U) [])
 

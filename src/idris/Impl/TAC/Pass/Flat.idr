@@ -1,8 +1,7 @@
 module Impl.TAC.Pass.Flat
 
 import Impl.TAC.TAC
-import Impl.TAC.FlatTAC
-import Impl.TAC.Common
+import Impl.TAC.Data
 
 import Data.List
 
@@ -12,10 +11,10 @@ flatData U         = [U]
 flatData (SVar label ty1) = [SVar label ty1]
 flatData (CVar d1 d2 ty1) = flatData d1 ++ flatData d2
 
-flatState: TACSt -> List FTACSt
+flatState: TACSt TACData -> List (TACSt FTACData)
 flatState (MkSt x) = map (\x => MkSt x) (flatData x)
 
-flatOp: TACOp1 -> List FTACOp1
+flatOp: TACOp TACData -> List (TACOp FTACData)
 flatOp (st ::= src) = 
   zipWith (\x, y => x ::= y) 
           (flatState st) 
@@ -96,13 +95,13 @@ flatOp (MULT src1 src2 dst) =
            (flatData src2)
            (flatData dst)
 
-flatOps: List TACOp1 -> List FTACOp1
+flatOps: List (TACOp TACData) -> List (TACOp FTACData)
 flatOps xs = xs >>= flatOp
 
 public export
-flatTAC1: (TACSt, TAC1) -> FTAC1
-flatTAC1 (st, x) = 
-  MkTAC1 (flatData  x.input) 
+flatTAC: TAC -> FTAC
+flatTAC x = 
+  MkFTAC (flatData  x.input) 
          (flatData  x.output)
-         (flatState st)
+         (flatState x.state)
          (flatOps x.ops)

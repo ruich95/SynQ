@@ -20,7 +20,7 @@ Mult TACComb where
                 y   <- y
                 var <- genVar (BvTy $ m+n)
                 let new_op = [MULT x.output y.output var]
-                pure $ MkTAC1 U var (x.ops ++ y.ops ++ new_op)
+                pure $ MkTAC U var (MkSt U) (x.ops ++ y.ops ++ new_op)
 
 
 %unhide SeqLib.(>>=)

@@ -1,107 +1,49 @@
 module Impl.TAC.TAC
 
+import Impl.TAC.Data
+
 import Data.Signal
-import Data.BitVec
-import Data.Linear
 import Data.State
-
-public export
-data TACTy: Type where
-  BvTy  : (width: Nat) -> TACTy
-  ProdTy: (a: TACTy) -> (b: TACTy) -> TACTy
-  UnitTy: TACTy
-  
-%name TACTy ty1, ty2
-
-public export
-data TACData: Type where
-  Const: {n: _} -> BitVec n -> TACData
-  U    : TACData
-  SVar : (label: Nat) -> TACTy -> TACData -- simple variable
-  CVar : (d1: TACData) -> (d2: TACData) 
-      -> TACTy -> TACData -- product of variables
-
-public export
-getTy: TACData -> TACTy
-getTy (Const {n} x)  = BvTy n
-getTy U              = UnitTy
-getTy (SVar _ ty1)   = ty1
-getTy (CVar _ _ ty1) = ty1
-
-public export
-prodData: TACData -> TACData -> TACData
-prodData x y = CVar x y (ProdTy (getTy x) (getTy y))
-
-public export
-proj1Data: TACData -> TACData
-proj1Data (CVar d1 d2 ty1) = d1
-proj1Data _ = believe_me "impossible"
-
-public export
-proj2Data: TACData -> TACData
-proj2Data (CVar d1 d2 ty1) = d2
-proj2Data _ = believe_me "impossible"
-
-public export
-Eq TACTy where
-  (==) (BvTy width1) (BvTy width2) = 
-    width1 == width2
-  (==) (ProdTy a1 b1) (ProdTy a2 b2) = 
-    (a1 == a2) && (b1 == b2)
-  (==) UnitTy UnitTy = True
-  (==) _ _ = False
-      
-public export
-Eq TACData where
-  (==) (Const {n=n1} x) (Const {n=n2} y) with (cmp n1 n2)
-    (==) (Const {n=n1} x) (Const {n=n1} y) | CmpEQ = x == y
-    (==) (Const {n=n1} x) (Const {n=n2} y) | _     = False
-  (==) U U = True
-  (==) (SVar label1 ty1) (SVar label2 ty2) = 
-    (label1 == label2) && (ty1 == ty2)
-  (==) (CVar d11 d12 ty1) (CVar d21 d22 ty2) = 
-    (d11 == d21) && (d12 == d22) && (ty1 == ty2)
-  (==) _ _ = False
 
 export infixr 9 ::=
 export infixr 9 <<=
 
 public export
-data TACSt: Type where
-  MkSt: TACData -> TACSt
+data TACSt: Type -> Type where
+  MkSt: datTy -> TACSt datTy
   
 public export
-splitSt: TACSt -> (TACSt, TACSt)
+splitSt: TACSt TACData -> (TACSt TACData, TACSt TACData)
 splitSt (MkSt (CVar d1 d2 ty1)) = (MkSt d1, MkSt d2)
 splitSt _ = believe_me "impossible"
 
 public export
-prodSt: TACSt -> TACSt -> TACSt
+prodSt: TACSt TACData -> TACSt TACData -> TACSt TACData
 prodSt (MkSt x) (MkSt y) = MkSt (prodData x y)
 
 public export
-data TACOp1: Type where
-  (::=)  : (st: TACSt) -> (src: TACData) -> TACOp1
-  (<<=)  : (dst: TACData) -> (st: TACSt) -> TACOp1
-  ADD    : (src1: TACData) -> (src2: TACData) -> (dst: TACData) -> TACOp1
-  CONCAT : (src1: TACData) -> (src2: TACData) -> (dst: TACData) -> TACOp1
-  AND    : (src1: TACData) -> (src2: TACData) -> (dst: TACData) -> TACOp1
-  OR     : (src1: TACData) -> (src2: TACData) -> (dst: TACData) -> TACOp1
-  XOR    : (src1: TACData) -> (src2: TACData) -> (dst: TACData) -> TACOp1
-  EQ     : (src1: TACData) -> (src2: TACData) -> (dst: TACData) -> TACOp1
-  LTU    : (src1: TACData) -> (src2: TACData) -> (dst: TACData) -> TACOp1
-  LT     : (src1: TACData) -> (src2: TACData) -> (dst: TACData) -> TACOp1
-  MUX21  : (src1: TACData) -> (src2: TACData) -> (src3: TACData) 
-        -> (dst:  TACData) -> TACOp1
-  SLL    : Nat -> (src: TACData) -> (dst: TACData) -> TACOp1
-  SRL    : Nat -> (src: TACData) -> (dst: TACData) -> TACOp1
-  SRA    : Nat -> (src: TACData) -> (dst: TACData) -> TACOp1
-  NOT    : (src: TACData) -> (dst: TACData) -> TACOp1
-  SLICE  : Nat -> Nat -> (src: TACData) -> (dst: TACData) -> TACOp1
-  MULT   : (src1: TACData) -> (src2: TACData) -> (dst: TACData) -> TACOp1
+data TACOp: Type -> Type where
+  (::=)  : (st: TACSt datTy) -> (src: datTy) -> TACOp datTy
+  (<<=)  : (dst: datTy) -> (st: TACSt datTy) -> TACOp datTy
+  ADD    : (src1: datTy) -> (src2: datTy) -> (dst: datTy) -> TACOp datTy
+  CONCAT : (src1: datTy) -> (src2: datTy) -> (dst: datTy) -> TACOp datTy
+  AND    : (src1: datTy) -> (src2: datTy) -> (dst: datTy) -> TACOp datTy
+  OR     : (src1: datTy) -> (src2: datTy) -> (dst: datTy) -> TACOp datTy
+  XOR    : (src1: datTy) -> (src2: datTy) -> (dst: datTy) -> TACOp datTy
+  EQ     : (src1: datTy) -> (src2: datTy) -> (dst: datTy) -> TACOp datTy
+  LTU    : (src1: datTy) -> (src2: datTy) -> (dst: datTy) -> TACOp datTy
+  LT     : (src1: datTy) -> (src2: datTy) -> (dst: datTy) -> TACOp datTy
+  MUX21  : (src1: datTy) -> (src2: datTy) -> (src3: datTy) 
+        -> (dst:  datTy) -> TACOp datTy
+  SLL    : Nat -> (src: datTy) -> (dst: datTy) -> TACOp datTy
+  SRL    : Nat -> (src: datTy) -> (dst: datTy) -> TACOp datTy
+  SRA    : Nat -> (src: datTy) -> (dst: datTy) -> TACOp datTy
+  NOT    : (src: datTy) -> (dst: datTy) -> TACOp datTy
+  SLICE  : Nat -> Nat -> (src: datTy) -> (dst: datTy) -> TACOp datTy
+  MULT   : (src1: datTy) -> (src2: datTy) -> (dst: datTy) -> TACOp datTy
 
 export
-mapOperands: (TACData -> TACData) -> TACOp1 -> TACOp1
+mapOperands: (a -> a) -> TACOp a -> TACOp a
 mapOperands f (st ::= src)               = st ::= f src
 mapOperands f (dst <<= st)               = f dst <<= st
 mapOperands f (ADD src1 src2 dst)        = ADD (f src1) (f src2) (f dst)       
@@ -119,36 +61,29 @@ mapOperands f (SRA k src dst)            = SRA k (f src) (f dst)
 mapOperands f (NOT src dst)              = NOT (f src) (f dst)             
 mapOperands f (SLICE k j src dst)        = SLICE k j (f src) (f dst)
 mapOperands f (MULT src1 src2 dst)       = MULT (f src1) (f src2) (f dst)
-
-public export
-record TAC1 where
-  constructor MkTAC1
-  input : TACData
-  output: TACData
-  ops   : List TACOp1
   
 public export
-getUsed: TACOp1 -> List TACData
-getUsed (x ::= y)         = [y]
-getUsed (dst <<= st)      = []
-getUsed (ADD x y dst)     = [x, y]
-getUsed (CONCAT x y dst)  = [x, y]
-getUsed (AND x y dst)     = [x, y]
-getUsed (OR x y dst)      = [x, y]
-getUsed (XOR x y dst)     = [x, y]
-getUsed (EQ x y dst)      = [x, y]
-getUsed (LTU x y dst)     = [x, y]
-getUsed (LT x y dst)      = [x, y]
-getUsed (MUX21 x y z dst) = [x, y, z]
-getUsed (SLL k x dst)     = [x]
-getUsed (SRL k x dst)     = [x]
-getUsed (SRA k x dst)     = [x]
-getUsed (NOT x dst)       = [x]
-getUsed (SLICE k j x dst) = [x]
-getUsed (MULT x y dst)    = [x, y]
+getSrc: TACOp a -> List a
+getSrc (x ::= y)         = [y]
+getSrc (dst <<= st)      = []
+getSrc (ADD x y dst)     = [x, y]
+getSrc (CONCAT x y dst)  = [x, y]
+getSrc (AND x y dst)     = [x, y]
+getSrc (OR x y dst)      = [x, y]
+getSrc (XOR x y dst)     = [x, y]
+getSrc (EQ x y dst)      = [x, y]
+getSrc (LTU x y dst)     = [x, y]
+getSrc (LT x y dst)      = [x, y]
+getSrc (MUX21 x y z dst) = [x, y, z]
+getSrc (SLL k x dst)     = [x]
+getSrc (SRL k x dst)     = [x]
+getSrc (SRA k x dst)     = [x]
+getSrc (NOT x dst)       = [x]
+getSrc (SLICE k j x dst) = [x]
+getSrc (MULT x y dst)    = [x, y]
 
 public export
-getDst: TACOp1 -> TACData
+getDst: TACOp a -> a
 getDst ((MkSt x) ::= y)  = x
 getDst (dst <<= st)      = dst
 getDst (ADD x y dst)     = dst
@@ -167,3 +102,99 @@ getDst (NOT x dst)       = dst
 getDst (SLICE k j x dst) = dst
 getDst (MULT _ _ dst)    = dst
 
+public export
+findDef: (Eq a) => 
+  a -> List (TACOp a) -> Maybe (TACOp a)
+findDef x [] = Nothing
+findDef x (y :: xs) = 
+  if getDst y == x then Just y 
+  else findDef x xs
+
+public export
+record TAC where
+  constructor MkTAC
+  input : TACData
+  output: TACData
+  state : TACSt TACData
+  ops   : List (TACOp TACData)
+
+export
+Show a => Show (TACSt a) where
+  show (MkSt x) = "!\{show x}"
+ 
+ppOp: Show a => TACOp a -> String
+ppOp (x ::= y) = 
+  "\{show x} ::= \{show y}"
+ppOp (x <<= y) = 
+  "\{show x} <<= \{show y}"
+ppOp (ADD x y dst) = 
+  "\{show dst} = \{show x} + \{show y}"
+ppOp (CONCAT x y dst) = 
+  "\{show dst} = \{show x} :: \{show y}"
+ppOp (AND x y dst) = 
+  "\{show dst} = \{show x} & \{show y}"
+ppOp (OR x y dst) = 
+  "\{show dst} = \{show x} | \{show y}"
+ppOp (XOR x y dst) = 
+  "\{show dst} = \{show x} ^ \{show y}"
+ppOp (EQ x y dst) = 
+  "\{show dst} = \{show x} == \{show y}"
+ppOp (LTU x y dst) = 
+  "\{show dst} = \{show x} <U \{show y}"
+ppOp (LT x y dst) = 
+  "\{show dst} = \{show x} <S \{show y}"
+ppOp (MUX21 x y z dst) = 
+  "\{show dst} = if \{show x} then \{show y} else \{show z}"
+ppOp (SLL k x dst) = 
+  "\{show dst} = \{show x} << \{show k}"
+ppOp (SRL k x dst) = 
+  "\{show dst} = \{show x} >> \{show k}"
+ppOp (SRA k x dst) = 
+  "\{show dst} = \{show x} >>A \{show k}"
+ppOp (NOT x dst) = 
+  "\{show dst} = not \{show x}"
+ppOp (SLICE k j x dst) = 
+  "\{show dst} = (\{show x})<\{show k}:\{show j}>"
+ppOp (MULT src1 src2 dst) = 
+  "\{show dst} = \{show src1} * \{show src2}"
+
+export
+Show a => Show (TACOp a) where
+  show = ppOp
+
+export
+substOp: (Subst a) 
+  => (old: a) -> (new: a) 
+  -> TACOp a -> TACOp a
+substOp old new x = 
+  mapOperands (subst old new) x
+
+public export
+substTAC: (old: TACData) -> (new: TACData) 
+  -> TAC -> TAC
+substTAC old new tac = 
+  let subst = subst old new 
+      substOps: List _ -> _ 
+        = (map $ substOp old new)
+  in {input $= subst, output $= subst, ops $= substOps} tac
+  
+public export
+record FTAC where
+  constructor MkFTAC
+  input : List FTACData
+  output: List FTACData
+  state : List (TACSt FTACData)
+  ops   : List (TACOp FTACData)
+
+public export
+substFTAC: (old: FTACData) -> (new: FTACData) 
+  -> FTAC -> FTAC
+substFTAC old new tac = 
+  let subst = subst old new 
+      substOps: List _ -> _ 
+        = (map $ substOp old new)
+  in {input $= map subst, output $= map subst, ops $= substOps} tac
+  
+export
+Eq a => Eq (TACSt a) where
+  (==) (MkSt x) (MkSt y) = x == y

@@ -1,6 +1,7 @@
 module Impl.TAC.GenTAC
 
 import Impl.TAC.TAC
+import Impl.TAC.Data
 import Impl.TAC.Common
 
 import Control.Monad.State
@@ -11,15 +12,15 @@ import Data.State
 public export
 record TACComb (a: Type) (b: Type) where
   constructor MkTACC
-  genTACC: State Nat TAC1
+  genTACC: State Nat TAC
 
 public export
 data TACSeq: Type -> Type -> Type -> Type where
-  MkTACS: (1 _: LState (!* Nat) $ TACSt -> TAC1) -> TACSeq _ _ _
+  MkTACS: (1 _: LState (!* Nat) $ (TACSt TACData) -> TAC) -> TACSeq _ _ _
   
 public export
 genTACS: (1 _: TACSeq s a b) 
-  -> LState (!* Nat) $ TACSt -> TAC1
+  -> LState (!* Nat) $ (TACSt TACData) -> TAC
 genTACS (MkTACS x) = x
 
 public export
@@ -33,10 +34,10 @@ genVar ty = ST $ \c => Id (S c, SVar c ty)
 public export
 genTAC: {auto sIsSt: St s} 
   -> (1 _: TACSeq s a b) 
-  -> (TACSt, TAC1)
+  -> TAC
 genTAC (MkTACS f) = 
   let (MkBang c # f') 
         = LState.runState f (MkBang 0)
       (_ , stv) = runState c (genVar $ fromSt sIsSt)
       st = MkSt stv
-  in (st, f' st)
+  in f' st
