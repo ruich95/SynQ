@@ -4,19 +4,6 @@ import Impl.TAC.TAC
 import Impl.TAC.Data
 import Impl.TAC.Pass.Common
 
-FlatOp: Type
-FlatOp = TACOp FTACData 
-
-FlatSt: Type
-FlatSt = TACSt FTACData
-
-isGet: FlatOp -> Maybe (FTACData, FlatSt)
-isGet (dst <<= st) = Just (dst, st)
-isGet _ = Nothing
-
-isSet: FlatOp -> Maybe (FlatSt, FTACData)
-isSet (st ::= src) = Just (st, src)
-isSet _ = Nothing
 
 SetCtx: Type
 SetCtx = List (FlatSt, FTACData)
@@ -71,8 +58,8 @@ getElim' ctx x@(z, o) =
        in getElim' ctx' x'
 
 export
-getElim: FTAC -> FTAC
-getElim tac@(MkFTAC input output state ops) = 
+elimGet: FTAC -> FTAC
+elimGet tac@(MkFTAC input output state ops) = 
   let ops' = fromList ops
       (_, ops', o') = 
         getElim' [] (ops', output)

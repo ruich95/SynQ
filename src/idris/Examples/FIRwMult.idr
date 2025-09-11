@@ -6,22 +6,30 @@ import Control.Monad.State
 import Data.Vect
 
 public export
-interface Mult (0 comb: Type -> Type -> Type) where
+interface Arith (0 comb: Type -> Type -> Type) where
   mult: {m: _} -> {n: _} 
      -> comb () (BitVec m) -> comb () (BitVec n)
      -> comb () (BitVec $ m + n)
-
+  add': {n: _} 
+     -> comb () (BitVec n) -> comb () (BitVec n)
+     -> comb () (BitVec n)
+  
 %hide SeqLib.(>>=)
 
 public export
-Mult TACComb where
+Arith TACComb where
   mult (MkTACC x) (MkTACC y) = 
     MkTACC $ do x   <- x 
                 y   <- y
                 var <- genVar (BvTy $ m+n)
                 let new_op = [MULT x.output y.output var]
                 pure $ MkTAC U var (MkSt U) (x.ops ++ y.ops ++ new_op)
-
+  add' (MkTACC x) (MkTACC y) = 
+    MkTACC $ do x   <- x 
+                y   <- y
+                var <- genVar (BvTy n)
+                let new_op = [ADD x.output y.output var]
+                pure $ MkTAC U var (MkSt U) (x.ops ++ y.ops ++ new_op)
 
 %unhide SeqLib.(>>=)
 
@@ -75,7 +83,7 @@ getLast {n = (S (S k))} x =
       x' = proj2 x 
   in getLast {n=S k} x'
 
-multKs: (Comb comb, Primitive comb, Mult comb)
+multKs: (Comb comb, Primitive comb, Arith comb)
   => {n: Nat} -> {len: Nat} -> {coefW: Nat}
   -> (coefs: Vect len Bits64)
   -> (xs: comb () $ Repeat len $ BitVec n)
@@ -89,23 +97,6 @@ multKs {len=S $ S len} (c :: cs@(_ :: _)) xs =
       tl = proj2 xs
       y = mult (const $ BV (cast c)) hd
   in prod y (multKs cs tl)
-
-neg: (Comb comb, Primitive comb) 
-  => {n: Nat} -> {m: Nat}
-  -> (k: Vect m Bool)
-  -> (x: comb () (Repeat m $ BitVec n))
-  -> comb () (Repeat m $ BitVec n)
-neg {m = 0} [] x = x
-neg {m = (S 0)} [y] x = 
-  if y then adder' (not x) (const $ BV 1)
-       else x
-neg {m = (S (S k))} (y :: ys) x = 
-  let _ = repeatSig (S k) $ BV {n=n}
-      hd = if y then adder' (not $ proj1 x) 
-                            (const $ BV 1)
-                else proj1 x
-      tl = neg ys (proj2 x)
-  in prod hd tl
 
 firState: (Seq comb seq, Primitive comb)
   => {auto aIsSig: Sig a}
@@ -130,25 +121,25 @@ firState (S k) init (MkReg get set) =
             set nxt) 
      # get
 
-sum: (Comb comb, Primitive comb) 
+sum: (Comb comb, Arith comb) 
   => {m: _} -> {n: _} 
   -> comb () (Repeat (S m) $ BitVec n)
   -> comb () (BitVec n)
 sum x = 
   let all = repeatImpliesAll {a=BitVec n} m
       sig = repeatSig (S m) $ BV {n=n}
+      adder = lam $ \xin => add' (proj1 xin) (proj2 xin)
   in (reduce adder) << x
 
 export
-mkFIR: (Seq comb seq, Primitive comb, Mult comb)
+mkFIR: (Seq comb seq, Primitive comb, Arith comb)
   => {m: Nat} -> {n: Nat} -> {coefW: Nat}
   -> (init: comb () $ Repeat (S m) $ BitVec n)
-  -> (weights: Vect (S $ S m) Bits64)
-  -> (sign:    Vect (S $ S m) Bool)
+  -> (coefs: Vect (S $ S m) Bits64)
   -> (1 reg: Reg (Repeat (S m) (BitVec n)) comb seq)
   -> seq (RepeatSt (S m) (!* (BitVec n)))
          (BitVec 1, BitVec 1, BitVec n) (BitVec $ coefW+n)
-mkFIR init weights sign reg = 
+mkFIR init coefs reg = 
   let (firStSet # firStGet) = 
          firState {aIsSig=BV {n=n}} {sIsSt = LV {n=n}} m init reg 
       prf1 = repeatSt  {n=S m} {sIsSt=LV {n=n}}
@@ -160,9 +151,7 @@ mkFIR init weights sign reg =
            xin  = proj2 $ proj2 xin
        in do cur' <- firStGet
              let cur = prod xin cur'
-                 weighted 
-                   = (lam $ neg (map not sign))
-                       << (multKs {coefW=coefW} weights cur)
+                 weighted = (multKs {coefW=coefW} coefs cur)
                  o = sum {m=S m} weighted
                  nxt = dropLast {aIsSig=BV {n=n}} {n=S m} cur
              _ <- firStSet rst skip nxt

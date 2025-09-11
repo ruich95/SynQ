@@ -26,6 +26,9 @@ ppFTAC (MkFTAC inputs outputs sts ops) =
   ++ (map ((\s => "  \{s}") . show) sts)
   ++ (map ((\s => "  \{s}") . show) ops)
 
+ppFTAC2: FTAC2 -> List String
+ppFTAC2 = ppFTAC . toFTAC
+
 writeLns: File -> List String -> IO ()
 writeLns f [] = pure ()
 writeLns f (x :: xs) = do Right () <- fPutStrLn f x
@@ -52,3 +55,7 @@ PPrint TAC where
 export
 PPrint FTAC where
   pprint = ppFTAC
+  
+export
+PPrint FTAC2 where
+  pprint = ppFTAC2

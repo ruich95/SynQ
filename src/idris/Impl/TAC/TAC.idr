@@ -194,7 +194,35 @@ substFTAC old new tac =
       substOps: List _ -> _ 
         = (map $ substOp old new)
   in {input $= map subst, output $= map subst, ops $= substOps} tac
-  
+
+public export
+record FTAC2 where
+  constructor MkFTAC2
+  input : List FTACData
+  output: List FTACData
+  state : List (TACSt FTACData)
+  opGet : List (TACOp FTACData)
+  ops   : List (TACOp FTACData)
+  opSet : List (TACOp FTACData)    
+
+public export
+substFTAC2: (old: FTACData) -> (new: FTACData) 
+  -> FTAC2 -> FTAC2
+substFTAC2 old new tac = 
+  let subst = subst old new 
+      substOps: List _ -> _ 
+        = (map $ substOp old new)
+  in {input  $= map subst, 
+      output $= map subst, 
+      opGet  $= substOps,
+      ops    $= substOps,
+      opSet  $= substOps} tac
+      
+public export
+toFTAC: FTAC2 -> FTAC
+toFTAC (MkFTAC2 input output state opGet ops opSet) 
+  = MkFTAC input output state (opGet++ops++opSet)
+
 export
 Eq a => Eq (TACSt a) where
   (==) (MkSt x) (MkSt y) = x == y

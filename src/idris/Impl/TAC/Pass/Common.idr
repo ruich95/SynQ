@@ -1,6 +1,8 @@
 module Impl.TAC.Pass.Common
 
 import Data.List
+import Impl.TAC.TAC
+import Impl.TAC.Data
 
 public export 
 record Zipper (a: Type) where
@@ -52,3 +54,27 @@ isElement x [] = False
 isElement x (y :: xs) = 
   if x == y then True 
   else isElement x xs
+
+public export
+FlatOp: Type
+FlatOp = TACOp FTACData 
+
+public export
+FlatSt: Type
+FlatSt = TACSt FTACData
+
+public export
+isGet: FlatOp -> Maybe (FTACData, FlatSt)
+isGet (dst <<= st) = Just (dst, st)
+isGet _ = Nothing
+
+public export
+isSet: FlatOp -> Maybe (FlatSt, FTACData)
+isSet (st ::= src) = Just (st, src)
+isSet _ = Nothing
+
+export
+notIn: Eq a => a -> List a -> Bool
+notIn x [] = True
+notIn x (y :: xs) = if x == y then False 
+                    else notIn x xs

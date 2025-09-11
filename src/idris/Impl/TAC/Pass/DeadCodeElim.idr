@@ -1,41 +1,37 @@
 module Impl.TAC.Pass.DeadCodeElim
 
+import Impl.TAC.TAC
+import Impl.TAC.Data
 import Impl.TAC.Common
-import Impl.TAC.FlatTAC
-
 import Impl.TAC.Pass.Common
+
 import Data.List
 import Data.LC
 
-isDead: TACData 
-  -> (List TACAtom1, TACData) -> Bool
-isDead x ([], out) = not (x == out)
-isDead x (y :: xs, out) = 
-  let used = getUsed y
-  in if isElement x used
-     then False else isDead x (xs, out)
-     
-deadElimStep: (Zipper TACAtom1, TACData) -> (Zipper TACAtom1, TACData)
-deadElimStep (z@(MkZipper prev Nothing rest), out) = (next z, out)
-deadElimStep (z@(MkZipper prev (Just cur) rest), out) = 
-  case cur of 
-    (Op (_ ::= _)) => (next z, out)
-    _ => if isDead (getDst cur) (prev, out)
-         then (next $ drop z, out) 
-         else (next z, out)
+unusedIn: FTACData -> List FlatOp -> Bool
+unusedIn x ops = 
+  let srcs = ops >>= getSrc 
+  in notIn x srcs
+  
+elimDeadStep: (List FTACData, Zipper FlatOp) -> (List FTACData, Zipper FlatOp)
+elimDeadStep (outs, z@(MkZipper prev (Just x) rest)) = 
+  case isSet x of 
+    Nothing => 
+      let dst = getDst x 
+      in if (dst `unusedIn` rest) && (dst `notIn` outs)
+         then (outs, next $ drop z)
+         else (outs, next z)
+    _ => (outs, next z)
+elimDeadStep (outs, z) = (outs, next z)
 
-deadElim: (Zipper TACAtom1, TACData) -> (Zipper TACAtom1, TACData)
-deadElim (z, out) = 
-  if isEnd z then deadElimStep (z, out)
-  else deadElim $ deadElimStep (z, out)
 
-deadCodeElim': TAC1 -> TAC1
-deadCodeElim' tac@(MkTAC1 input output ops) = 
-  let ops'      = fromList $ reverse ops 
-      (ops', _) = deadElim (ops', output)
-      ops'      = reverse $ Common.toList ops'
-  in {ops := ops'} tac
-
+elimDead': (List FTACData, Zipper FlatOp) -> (List FTACData, Zipper FlatOp)
+elimDead' z1 = 
+  if isEnd $ snd z1 then z1 
+  else elimDead' $ elimDeadStep z1
+  
 export
-deadCodeElim: (1 _: LC a TAC1) -> LC a TAC1
-deadCodeElim (l # v) = (l # deadCodeElim' v)
+elimDead: FTAC -> FTAC
+elimDead tac@(MkFTAC input output state ops) = 
+  let ops' = Common.toList $ snd $ elimDead' (output, fromList ops) 
+  in {ops := ops'} tac
