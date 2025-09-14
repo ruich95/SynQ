@@ -1,4 +1,4 @@
-module Impl.TAC.Pass.InlineGet
+module Impl.TAC.Pass.SubstGet
 
 import Impl.TAC.TAC
 import Impl.TAC.Data
