@@ -226,3 +226,39 @@ toFTAC (MkFTAC2 input output state opGet ops opSet)
 export
 Eq a => Eq (TACSt a) where
   (==) (MkSt x) (MkSt y) = x == y
+
+encode: TACOp a -> Int
+encode (st ::= src)               = 0
+encode (dst <<= st)               = 1
+encode (ADD src1 src2 dst)        = 2
+encode (CONCAT src1 src2 dst)     = 3
+encode (AND src1 src2 dst)        = 4
+encode (OR src1 src2 dst)         = 5
+encode (XOR src1 src2 dst)        = 6
+encode (EQ src1 src2 dst)         = 7
+encode (LTU src1 src2 dst)        = 8
+encode (LT src1 src2 dst)         = 9
+encode (MUX21 src1 src2 src3 dst) = 10
+encode (SLL k src dst)            = 11
+encode (SRL k src dst)            = 12
+encode (SRA k src dst)            = 13
+encode (NOT src dst)              = 14
+encode (SLICE k j src dst)        = 15
+encode (MULT src1 src2 dst)       = 16
+
+export
+Eq a => Eq (TACOp a) where
+  (==) x y = 
+    if encode x == encode y 
+    then (getSrc x == getSrc y) 
+      && (getDst x == getDst y)
+    else False
+    
+export
+Ord a => Ord (TACOp a) where
+  (<) x y = 
+    if encode x == encode y 
+    then if getSrc x == getSrc y
+         then getDst x < getDst y
+         else getSrc x < getSrc y
+    else encode x < encode y

@@ -192,3 +192,18 @@ namespace Flatted
     subst old new x = 
       if old == x then new else x
     
+  
+  encode: FTACData -> Int
+  encode U = 0
+  encode (Const _) = 1
+  encode (SVar _ _) = 2
+  
+  getLabel: FTACData -> Nat
+  getLabel (SVar label ty1) = label
+  getLabel _ = 0
+  
+  export
+  Ord FTACData where
+    (<) x y = if encode x == encode y 
+              then getLabel x < getLabel y
+              else encode x   < encode y
