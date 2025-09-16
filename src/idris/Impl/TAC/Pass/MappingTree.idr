@@ -8,6 +8,11 @@ import Data.List
 
 data Core = P1 | P2
 
+Eq Core where
+  P1 == P1 = True
+  P2 == P2 = True
+  _ == _   = False
+
 data Mapped a = MapTo a Core
 
 getContent: Mapped a -> a
@@ -17,58 +22,85 @@ getCore: Mapped a -> Core
 getCore (MapTo x y) = y
 
 data EvalTree: Type where
-  Data : (label: Nat)  -> (onCore: Core) -> EvalTree
+  Var  : (label: Nat)  -> (onCore: Core) -> EvalTree
   State: (label: Nat) -> (onCore: Core) -> EvalTree
   Const: EvalTree
   Op: (lable: Nat) -> (deps: List EvalTree) 
    -> (onCore: Core) -> EvalTree
   
-lookupMapped: Eq a => a -> List (Mapped a) -> Maybe (Mapped a)
-  
-mkTree: (root: Mapped FlatOp)
-  -> (ops    : List $ Mapped FlatOp)
-  -> (inputs : List $ Mapped FTACData)
+lookupMapped: Eq a => a -> List (Mapped a) -> Maybe Core
+lookupMapped x xs = 
+  case filter (\y => getContent y == x) xs of 
+    [res] => Just $ getCore res
+    _ => Nothing
+
+dataToTree: FTACData -> Core -> EvalTree
+dataToTree (SVar label _) core = Var label core
+dataToTree x core = Const
+
+findDef': FTACData -> (List $ Mapped FlatOp) 
+  -> Maybe (Mapped FlatOp)
+findDef' x xs = 
+  let res = 
+        filter 
+          (\(op `MapTo` _) => getDst op == x)
+          xs
+  in case res of 
+       [res] => Just res
+       _ => Nothing -- should be only one definition
+
+getLabel: FTACData -> Maybe Nat
+getLabel (SVar label _) = Just label
+getLabel x = Nothing
+
+mkTree: (inputs : List $ Mapped FTACData)
   -> (states : List $ Mapped FlatSt)
   -> (outputs: List $ Mapped FTACData)
+  -> (ops    : List $ Mapped FlatOp)
+  -> (root   : Mapped FlatOp)
   -> Maybe EvalTree
-mkTree (op `MapTo` core) ops inputs states outputs = 
-  case isGet op of
-    Nothing => 
-      case isSet op of
-        Nothing => ?rhs
-        Just (dst, st) => 
-          case lookupMapped st states of
-            Nothing  => Nothing
-            Just (MapTo (MkSt $ SVar stLabel _) core') => 
-              Just $ Op stLabel [core'] core
-            Just (MapTo _ core') => 
-              Just $ Op label [Const] core
-    Just (SVar label _, st) => 
-      case lookupMapped st states of
-        Nothing  => Nothing
-        Just (MapTo (MkSt $ SVar stLabel _) core') => 
-          Just $ Op label [State stLabel core'] core
-        Just (MapTo _ core') => 
-          Just $ Op label [Const] core
-    Just (_, st) => Nothing
-    
--- mkTree (core, x) xs = 
---   case getDst x of 
---     SVar label _ => 
---       let srcs = getSrc x
---           defs = zip (map fst xs) 
---                      (map (\y => findDef y 
---                                $ map snd xs) 
---                           srcs)
---           subTrees = zipWith mkTr srcs defs
---       in Op label subTrees core
---     _ => Const
---   where 
---     mkTr: (src: FTACData) 
---        -> (def: (Core, Maybe FlatOp)) -> EvalTree
---     mkTr src (core, Nothing) = 
---       case src of
---         (SVar label ty1) => Data label
---         _ => Const
---     mkTr src (core, Just op) = mkTree (core, op) xs 
+mkTree inputs states outputs ops  ((st@(MkSt vSt) ::= val) `MapTo` _) = 
+  do core    <- lookupMapped st states
+     label   <- getLabel vSt
+     subtree <- genSubtree
+     pure $ Op label [subtree] core
+where 
+  genSubtree : Maybe EvalTree
+  genSubtree = 
+    case lookupMapped val inputs of
+      (Just core') => Just $ dataToTree val core'
+      Nothing => 
+        case findDef' val ops of
+          Nothing => Nothing
+          (Just x) => mkTree inputs states outputs ops x
+mkTree inputs states outputs ops  ((val <<= st@(MkSt vSt)) `MapTo` core) = 
+  do stCore   <- lookupMapped st states
+     label    <- getLabel val
+     stLabel  <- getLabel vSt
+     let mkTrOn = Op label [State stLabel stCore]
+         core' = 
+           case lookupMapped val outputs of 
+             Nothing =>  core
+             (Just outCore) => outCore
+     pure $ mkTrOn core'
+mkTree inputs states outputs ops  (op `MapTo` core) = 
+  let srcs = getSrc op
+      dst  = getDst op
+  in do label <- getLabel dst 
+        subtrees <- swap $ map genSubtree srcs
+        pure $ Op label subtrees core
+where
+  genSubtree: FTACData -> Maybe EvalTree
+  genSubtree val = 
+    case lookupMapped val inputs of
+      Nothing => 
+        case findDef' val ops of
+          Nothing => Nothing
+          (Just x) => mkTree inputs states outputs ops x
+      (Just x) => Just $ dataToTree val x
+      
+  swap: List (Maybe a) -> Maybe (List a)
+  swap = foldr (\x, xs => [| x :: xs|])  (Just [])
+
+
  
