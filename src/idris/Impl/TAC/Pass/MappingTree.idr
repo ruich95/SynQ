@@ -101,6 +101,40 @@ where
       
   swap: List (Maybe a) -> Maybe (List a)
   swap = foldr (\x, xs => [| x :: xs|])  (Just [])
+  
+genEvalTree: (inputMap: List Core) 
+  -> (outputMap: List Core)
+  -> (stateMap : List Core)
+  -> (opsMap   : List Core)
+  -> (op: Mapped FlatOp)
+  -> FTAC -> Maybe EvalTree
+genEvalTree inputMap outputMap stateMap opsMap op
+            (MkFTAC input output state ops) = 
+  let m: (forall a. List a -> _) = zipWith (\x, y => x `MapTo` y) 
+      input'  = m input inputMap
+      output' = m output outputMap
+      state'  = m state stateMap
+      ops'    = m ops opsMap
+  in mkTree input' state' output' ops' op
+
+mkVar: Nat -> FTACData
+mkVar x = SVar x $ BvTy 8
+      
+testTAC: FTAC
+testTAC = 
+  MkFTAC [mkVar 0] 
+         [mkVar 1] 
+         [MkSt $ mkVar 2]
+         [(mkVar 3) <<= MkSt (mkVar 2),
+          ADD  (mkVar 0) (mkVar 3) (mkVar 4),
+          ADD  (mkVar 4) (mkVar 3) (mkVar 5),
+          MULT (mkVar 4) (mkVar 3) (mkVar 6),
+          ADD  (mkVar 4) (mkVar 6) (mkVar 1),
+          MkSt (mkVar 2) ::= (mkVar 1)]
+
+  
+testTree: Maybe EvalTree
+testTree = genEvalTree [P1] [P1] [P1] [P1, P1, P1, P2, P1, P1] (MULT (mkVar 4) (mkVar 3) (mkVar 6) `MapTo` P2) testTAC
 
 
- 
+
