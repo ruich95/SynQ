@@ -5,6 +5,8 @@ import Impl.TAC
 import Control.Monad.State
 import Data.Vect
 
+import Examples.BalanceTree
+
 public export
 interface Arith (0 comb: Type -> Type -> Type) where
   mult: {m: _} -> {n: _} 
@@ -121,15 +123,25 @@ firState (S k) init (MkReg get set) =
             set nxt) 
      # get
 
-sum: (Comb comb, Arith comb) 
+sum1: (Comb comb, Arith comb) 
   => {m: _} -> {n: _} 
   -> comb () (Repeat (S m) $ BitVec n)
   -> comb () (BitVec n)
-sum x = 
+sum1 x = 
   let all = repeatImpliesAll {a=BitVec n} m
       sig = repeatSig (S m) $ BV {n=n}
       adder = lam $ \xin => add' (proj1 xin) (proj2 xin)
   in (reduce adder) << x
+
+sum2: (Comb comb, Arith comb) 
+  => {m: _} -> {n: _} 
+  -> comb () (Repeat (S m) $ BitVec n)
+  -> comb () (BitVec n)
+sum2 x = 
+  let all = repeatImpliesAll {a=BitVec n} m
+      sig = repeatSig (S m) $ BV {n=n}
+      adder = lam $ \xin => add' (proj1 {aIsSig= BV {n=n}} xin) (proj2 xin)
+  in (balancedReduce {max_iter=400} adder) << x
 
 export
 mkFIR: (Seq comb seq, Primitive comb, Arith comb)
@@ -152,7 +164,7 @@ mkFIR init coefs reg =
        in do cur' <- firStGet
              let cur = prod xin cur'
                  weighted = (multKs {coefW=coefW} coefs cur)
-                 o = sum {m=S m} weighted
+                 o = sum2 {m=S m} weighted
                  nxt = dropLast {aIsSig=BV {n=n}} {n=S m} cur
              _ <- firStSet rst skip nxt
              pure $ o

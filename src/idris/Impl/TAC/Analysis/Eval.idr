@@ -2,6 +2,7 @@ module Impl.TAC.Analysis.Eval
 
 import Impl.TAC.Data
 import Impl.TAC.TAC
+import Data.BitVec
 
 import Data.List
 import Control.Monad.State
@@ -63,18 +64,35 @@ record MTAC where
   state : List $ Mapped FlatSt
   p1Ops : List FlatOp
   p2Ops : List FlatOp
-  
+
+dstIn: FlatOp -> List (Mapped FTACData) -> Maybe Core
+dstIn (_::=_) xs = Nothing
+dstIn x xs = 
+  let dst = getDst x 
+  in case filter (\(y `MapTo`_) => y == dst) xs of 
+       [(_ `MapTo` core)] => Just core
+       _   => Nothing
+
 mapFTAC: FTAC -> Mapping -> MTAC
 mapFTAC x y = 
-  MkMTAC (mapTo x.input  y.input) 
-         (mapTo x.output y.output)
-         (mapTo x.state  y.state)
-         (map fst 
-            $ filter (\x => snd x == P1) 
-            $ zip x.ops y.ops)
-         (map fst 
-            $ filter (\x => snd x == P2) 
-            $ zip x.ops y.ops)
+  let mappedOut = (mapTo x.output y.output)
+  in MkMTAC (mapTo x.input  y.input) 
+            mappedOut  
+            (mapTo x.state  y.state)
+            (map fst 
+               $ filter 
+                   (\(op, core) => 
+                       case dstIn op mappedOut of
+                         Just p => p == P1
+                         Nothing => core == P1) 
+               $ zip x.ops y.ops)
+            (map fst 
+               $ filter 
+                   (\(op, core) => 
+                       case dstIn op mappedOut of
+                         Just p => p == P2
+                         Nothing => core == P2) 
+               $ zip x.ops y.ops)
 
 record History where
   constructor Remeber
@@ -124,6 +142,8 @@ canEval op core tac history =
   in foldr (\x, xs => [|x :: xs|]) (Just []) cores
 where
   find': FTACData -> Maybe Core
+  find' (Const _) = Just core -- constants are always avaliable
+  find' U = Just core
   find' x = 
     case lookupInHistory x history of
       (Nothing, Nothing) => 
@@ -273,28 +293,96 @@ evalToEnd tac =
 eval: MTAC -> History
 eval x = fst $ runState init (evalToEnd x)
 
-mkVar: Nat -> FTACData
-mkVar x = SVar x $ BvTy 8
-      
+var: Nat -> FTACData
+var x = SVar x $ BvTy 8
+
+cst: Bits64 -> FTACData
+cst m = Const $ BV {n=8} m
+
+st: Nat -> FlatSt
+st x = MkSt $ var x
+                  
 testTAC: FTAC
 testTAC = 
-  MkFTAC [mkVar 0] 
-         [mkVar 1] 
-         [MkSt $ mkVar 2]
-         [(mkVar 3) <<= MkSt (mkVar 2),
-          ADD  (mkVar 0) (mkVar 3) (mkVar 4),
-          ADD  (mkVar 4) (mkVar 3) (mkVar 5),
-          MULT (mkVar 4) (mkVar 3) (mkVar 6),
-          AND  (mkVar 4) (mkVar 3) (mkVar 7),
-          ADD  (mkVar 7) (mkVar 6) (mkVar 1),
-          MkSt (mkVar 2) ::= (mkVar 1)]
+  MkFTAC [var 0] 
+         [var 1] 
+         [st 2]
+         [(var 3) <<= (st 2),
+          ADD  (var 0) (var 3) (var 4),
+          ADD  (var 4) (var 3) (var 5),
+          MULT (var 4) (var 3) (var 6),
+          AND  (var 4) (var 3) (var 7),
+          ADD  (var 7) (var 6) (var 1),
+          (st 2) ::= (var 1)]
 
 
 testMapping: Mapping
-testMapping = MkMapping [P1] [P1] [P1] [P1, P1, P1, P2, P2, P1, P1]
+testMapping = MkMapping [P1] [P2] [P1] [P1, P1, P1, P2, P2, P1, P1]
 
 testMTAC: MTAC
 testMTAC = mapFTAC testTAC testMapping
+
+wsum: FTAC
+wsum = 
+  MkFTAC 
+    [var 0] 
+    [var 1] 
+    [st 2, st 3, st 4] 
+    [(var 5) <<= (st 2),
+     (var 6) <<= (st 3),
+     (var 7) <<= (st 4),
+     MULT (var 0)  (cst 1)  (var 8),
+     MULT (var 5)  (cst 1)  (var 9),
+     MULT (var 6)  (cst 1)  (var 10),
+     MULT (var 7)  (cst 1)  (var 11),
+     ADD  (var 8)  (var 9)  (var 12),
+     ADD  (var 10) (var 11) (var 13),
+     ADD  (var 12) (var 13) (var 1),
+     (st 2) ::= (var 0),
+     (st 3) ::= (var 5),
+     (st 4) ::= (var 6)]
+
+wsumMapping: Mapping
+wsumMapping = 
+  MkMapping 
+    [P1] 
+    [P1] 
+    [P1, P2, P2] 
+    [P1, P2, P2, P1, P1, P2, P2, P1, P2, P1, P1, P2, P2]
+    
+wsumCfg: MTAC
+wsumCfg = mapFTAC wsum wsumMapping
+
+-- wsum2: FTAC
+-- wsum2 = 
+--   MkFTAC 
+--     [var 0] 
+--     [var 1] 
+--     [st 2, st 3, st 4] 
+--     [(var 5) <<= (st 2),
+--      (var 6) <<= (st 3),
+--      (var 7) <<= (st 4),
+--      MULT (var 0)  (cst 1)  (var 8),
+--      MULT (var 5)  (cst 1)  (var 9),
+--      MULT (var 6)  (cst 1)  (var 10),
+--      MULT (var 7)  (cst 1)  (var 11),
+--      ADD  (var 8)  (var 9)  (var 12),
+--      ADD  (var 10) (var 12) (var 13),
+--      ADD  (var 13) (var 11) (var 1),
+--      (st 2) ::= (var 0),
+--      (st 3) ::= (var 5),
+--      (st 4) ::= (var 6)]
+
+-- wsum2Mapping: Mapping
+-- wsum2Mapping = 
+--   MkMapping 
+--     [P1] 
+--     [P1] 
+--     [P1, P2, P2] 
+--     [P1, P2, P2, P1, P1, P2, P2, P1, P2, P1, P1, P2, P2]
+
+-- wsum2Cfg: MTAC
+-- wsum2Cfg = mapFTAC wsum2 wsum2Mapping
 
 -- testTree: Maybe EvalTree
 -- testTree = genEvalTree [P1] [P1] [P1] [P1, P1, P1, P2, P1, P1] (MULT (mkVar 4) (mkVar 3) (mkVar 6) `MapTo` P2) testTAC
