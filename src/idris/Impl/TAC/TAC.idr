@@ -195,6 +195,10 @@ substFTAC old new tac =
         = (map $ substOp old new)
   in {input $= map subst, output $= map subst, ops $= substOps} tac
 
+export
+Eq a => Eq (TACSt a) where
+  (==) (MkSt x) (MkSt y) = x == y
+
 public export
 record FTAC2 where
   constructor MkFTAC2
@@ -222,10 +226,6 @@ public export
 toFTAC: FTAC2 -> FTAC
 toFTAC (MkFTAC2 input output state opGet ops opSet) 
   = MkFTAC input output state (opGet++ops++opSet)
-
-export
-Eq a => Eq (TACSt a) where
-  (==) (MkSt x) (MkSt y) = x == y
 
 encode: TACOp a -> Int
 encode (st ::= src)               = 0
@@ -262,3 +262,12 @@ Ord a => Ord (TACOp a) where
          then getDst x < getDst y
          else getSrc x < getSrc y
     else encode x < encode y
+
+public export
+Eq FTAC where
+  (==) (MkFTAC input1 output1 state1 ops1) 
+       (MkFTAC input2 output2 state2 ops2) = 
+    (input1 == input2) 
+    && (output1 == output2) 
+    && (state1 == state2)
+    && (ops1 == ops2)

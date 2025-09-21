@@ -7,6 +7,8 @@ import Data.BitVec
 import Data.List
 import Control.Monad.State
 
+import Language.JSON
+
 public export
 isElement: (Eq a) => a -> List a -> Bool
 isElement x [] = False
@@ -45,11 +47,13 @@ Eq Core where
   P2 == P2 = True
   _ == _ = False
 
+public export
 data Mapped a = MapTo a Core
 
 mapTo: List a -> List Core -> List (Mapped a)
 mapTo = zipWith (\x, y => MapTo x y)
 
+public export
 record Mapping where
   constructor MkMapping
   input : List Core
@@ -57,6 +61,7 @@ record Mapping where
   state : List Core
   ops   : List Core
   
+public export
 record MTAC where
   constructor MkMTAC
   input : List $ Mapped FTACData
@@ -73,6 +78,7 @@ dstIn x xs =
        [(_ `MapTo` core)] => Just core
        _   => Nothing
 
+public export
 mapFTAC: FTAC -> Mapping -> MTAC
 mapFTAC x y = 
   let mappedOut = (mapTo x.output y.output)
@@ -94,6 +100,7 @@ mapFTAC x y =
                          Nothing => core == P2) 
                $ zip x.ops y.ops)
 
+public export
 record History where
   constructor Remeber
   onP1 : List FTACData
@@ -289,7 +296,8 @@ evalToEnd tac =
   if isEnd tac 
   then pure tac
   else (eval' tac) >>= evalToEnd
-  
+
+public export 
 eval: MTAC -> History
 eval x = fst $ runState init (evalToEnd x)
 
@@ -353,40 +361,39 @@ wsumMapping =
 wsumCfg: MTAC
 wsumCfg = mapFTAC wsum wsumMapping
 
--- wsum2: FTAC
--- wsum2 = 
---   MkFTAC 
---     [var 0] 
---     [var 1] 
---     [st 2, st 3, st 4] 
---     [(var 5) <<= (st 2),
---      (var 6) <<= (st 3),
---      (var 7) <<= (st 4),
---      MULT (var 0)  (cst 1)  (var 8),
---      MULT (var 5)  (cst 1)  (var 9),
---      MULT (var 6)  (cst 1)  (var 10),
---      MULT (var 7)  (cst 1)  (var 11),
---      ADD  (var 8)  (var 9)  (var 12),
---      ADD  (var 10) (var 12) (var 13),
---      ADD  (var 13) (var 11) (var 1),
---      (st 2) ::= (var 0),
---      (st 3) ::= (var 5),
---      (st 4) ::= (var 6)]
+json2Core: JSON -> Maybe Core
+json2Core (JString "P1") = Just P1
+json2Core (JString "P2") = Just P2
+json2Core str  = Nothing
 
--- wsum2Mapping: Mapping
--- wsum2Mapping = 
---   MkMapping 
---     [P1] 
---     [P1] 
---     [P1, P2, P2] 
---     [P1, P2, P2, P1, P1, P2, P2, P1, P2, P1, P1, P2, P2]
+swap: List (Maybe a) -> Maybe (List a)
+swap [] = Just []
+swap (x :: xs) = [| x :: swap xs|]
 
--- wsum2Cfg: MTAC
--- wsum2Cfg = mapFTAC wsum2 wsum2Mapping
+json2Mapping: JSON -> Maybe Mapping
+json2Mapping 
+  (JObject 
+    [("input" , JArray jInput), 
+     ("output", JArray jOutput),
+     ("state" , JArray jState),
+     ("ops",    JArray jOps)]) = 
+  do input  <- swap $ map json2Core jInput
+     output <- swap $ map json2Core jOutput
+     state  <- swap $ map json2Core jState
+     ops    <- swap $ map json2Core jOps
+     pure $ MkMapping input output state ops
+json2Mapping json = Nothing
 
--- testTree: Maybe EvalTree
--- testTree = genEvalTree [P1] [P1] [P1] [P1, P1, P1, P2, P1, P1] (MULT (mkVar 4) (mkVar 3) (mkVar 6) `MapTo` P2) testTAC
+export
+jStr2Mapping: String -> Maybe Mapping
+jStr2Mapping str = 
+  do json <- parse str
+     json2Mapping json
 
-
-
-
+export
+matchedMapping: FTAC -> Mapping -> Bool
+matchedMapping x y = 
+  (length x.input == length y.input)
+  && (length x.output == length y.output) 
+  && (length x.state == length y.state) 
+  && (length x.ops == length y.ops) -- ?matchedMapping_rhs

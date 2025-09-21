@@ -54,4 +54,7 @@ fir reg =
   let init = initN 24 (const $ BV 0)
   in mkFIR {coefW=16} init coefs reg 
 
+firTAC: FTAC
+firTAC = moveState $ elimDead $ elimGet $ flatTAC $ genTAC (fir reg)
+
 

@@ -168,4 +168,6 @@ mkFIR init coefs reg =
                  nxt = dropLast {aIsSig=BV {n=n}} {n=S m} cur
              _ <- firStSet rst skip nxt
              pure $ o
+             
+
 
