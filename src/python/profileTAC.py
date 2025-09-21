@@ -3,12 +3,12 @@ import subprocess
 import os
 import signal
 import random
-import matplotlib.pyplot as plt
+from multiprocessing import Process, Queue
 import tqdm
 
 mapping = ["P1", "P2"]
 
-nSample = 1000
+nSample = 10000
 
 testMapping = {"input": ["P1"], 
                "output": ["P1"],
@@ -53,7 +53,7 @@ class ProfileTAC(object):
     def terminate(self):
         os.killpg(os.getpgid(self.profile_process.pid), signal.SIGTERM)
 
-def profileTAC(tac:json, mapping:json):
+def profileTAC(tac:json, mapping:json, queue):
     tacStr = json.dumps(tac)
     mapStr = json.dumps(mapping)
     try:
@@ -61,22 +61,50 @@ def profileTAC(tac:json, mapping:json):
         res = process.run(tacStr+"\n", mapStr+"\n")
     finally:
         process.terminate()
-    return res
+    
+    queue.put(res)
 
 
-steps = []
-communications = []
+stepsRegular = []
+stepsBalanced = []
+communicationsRegular = []
+communicationsBalanced = []
 
-with open("../../regularFIR.json", "r") as f:
-    tac = json.load(f)
+with open("../../regularFIR.json", "r") as fRegular:
+    tacRegular = json.load(fRegular)
+    
+with open("../../balancedFIR.json", "r") as fRegular:
+    tacBalanced = json.load(fRegular)
 
     for i in tqdm.tqdm(range(nSample)):
-        mapping = randomMapping(tac, "P1", "P1")
-        res = profileTAC(tac, mapping)
-        steps.append(res["steps"])
-        communications.append(res["communications"])
+        mapping = randomMapping(tacRegular, "P1", "P1")
+        
+        qRegular = Queue()
+        qBalanced = Queue()
 
-    with open("res_regular.json", "w") as fRes:
-        json.dump({"steps": steps, "communications": communications}, fRes)
+        pRegular = Process(target=profileTAC, args=(tacRegular, mapping, qRegular))
+        pRegular.start()
+
+        pBalanced = Process(target=profileTAC, args=(tacBalanced, mapping, qBalanced))
+        pBalanced.start()
+
+        pRegular.join()
+        pBalanced.join()
+
+        # resRegular = profileTAC(tacRegular, mapping)
+        resRegular = qRegular.get()
+        stepsRegular.append(resRegular["steps"])
+        communicationsRegular.append(resRegular["communications"])
+
+        # resBalanced = profileTAC(tacBalanced, mapping) 
+        resBalanced = qBalanced.get()
+        stepsBalanced.append(resBalanced["steps"])
+        communicationsBalanced.append(resBalanced["communications"])
+
+with open("res_regular.json", "w") as fRes:
+    json.dump({"steps": stepsRegular, "communications": communicationsRegular}, fRes)
+
+with open("res_balanced.json", "w") as fRes:
+    json.dump({"steps": stepsBalanced, "communications": communicationsBalanced}, fRes)
     #plt.show()
          

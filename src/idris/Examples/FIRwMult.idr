@@ -170,4 +170,22 @@ mkFIR init coefs reg =
              pure $ o
              
 
-
+export
+mkFIR': (Seq comb seq, Primitive comb, Arith comb)
+  => {m: Nat} -> {n: Nat} -> {coefW: Nat}
+  -> (coefs: Vect (S $ S m) Bits64)
+  -> (1 reg: Reg (Repeat (S m) (BitVec n)) comb seq)
+  -> seq (RepeatSt (S m) (!* (BitVec n)))
+         (BitVec n) (BitVec $ coefW+n)
+mkFIR' coefs (MkReg get set) = 
+  let prf1 = repeatSt {sIsSt= LV {n=n}} {n=S m}
+      prf2 = repeatSig (S m) (BV {n=n})
+      prf3 = sameShape {similar=BV {n=n}} {n=S m}
+  in abst $ \xin => 
+       do cur <- get 
+          let cur = prod xin cur
+              weighted = (multKs {coefW=coefW} coefs cur)
+              o = sum1 {m=S m} weighted
+              nxt = dropLast {aIsSig=BV {n=n}} {n=S m} cur
+          _ <- set nxt
+          pure $ o

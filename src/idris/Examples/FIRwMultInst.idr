@@ -54,7 +54,17 @@ fir reg =
   let init = initN 24 (const $ BV 0)
   in mkFIR {coefW=16} init coefs reg 
 
+fir': (Seq comb seq, Primitive comb, Arith comb)
+   => (1 reg: Reg (Repeat 24 (BitVec 16)) comb seq)
+   -> seq (RepeatSt 24 $ !* (BitVec 16))
+          (BitVec 16) (BitVec 32)
+fir' reg = 
+  mkFIR' {coefW=16} coefs reg 
+
 firTAC: FTAC
 firTAC = moveState $ elimDead $ elimGet $ flatTAC $ genTAC (fir reg)
+
+firTAC': FTAC
+firTAC' = moveState $ elimDead $ elimGet $ flatTAC $ genTAC (fir' reg)
 
 
