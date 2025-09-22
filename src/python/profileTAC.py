@@ -5,10 +5,14 @@ import signal
 import random
 from multiprocessing import Process, Queue
 import tqdm
+from pathlib import Path
 
 mapping = ["P1", "P2"]
 
 nSample = 10000
+
+regularTACPath = Path("../../regularFIR25.json")
+balancedTACPath = Path("../../balancedFIR25.json")
 
 testMapping = {"input": ["P1"], 
                "output": ["P1"],
@@ -70,14 +74,14 @@ stepsBalanced = []
 communicationsRegular = []
 communicationsBalanced = []
 
-with open("../../regularFIR.json", "r") as fRegular:
+with open(regularTACPath, "r") as fRegular:
     tacRegular = json.load(fRegular)
     
-with open("../../balancedFIR.json", "r") as fRegular:
+with open(balancedTACPath, "r") as fRegular:
     tacBalanced = json.load(fRegular)
 
     for i in tqdm.tqdm(range(nSample)):
-        mapping = randomMapping(tacRegular, "P1", "P1")
+        mapping = randomMapping(tacRegular, "P1", "P2")
         
         qRegular = Queue()
         qBalanced = Queue()
@@ -101,10 +105,10 @@ with open("../../balancedFIR.json", "r") as fRegular:
         stepsBalanced.append(resBalanced["steps"])
         communicationsBalanced.append(resBalanced["communications"])
 
-with open("res_regular.json", "w") as fRes:
+with open("{}_res_2.json".format(regularTACPath.stem), "w") as fRes:
     json.dump({"steps": stepsRegular, "communications": communicationsRegular}, fRes)
 
-with open("res_balanced.json", "w") as fRes:
+with open("{}_res_2.json".format(balancedTACPath.stem), "w") as fRes:
     json.dump({"steps": stepsBalanced, "communications": communicationsBalanced}, fRes)
     #plt.show()
          

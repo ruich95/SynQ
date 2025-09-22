@@ -185,7 +185,7 @@ mkFIR' coefs (MkReg get set) =
        do cur <- get 
           let cur = prod xin cur
               weighted = (multKs {coefW=coefW} coefs cur)
-              o = sum1 {m=S m} weighted
+              o = sum2 {m=S m} weighted
               nxt = dropLast {aIsSig=BV {n=n}} {n=S m} cur
           _ <- set nxt
           pure $ o
