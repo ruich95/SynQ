@@ -10,7 +10,7 @@ import Sym.Comb.Comb as CB
 import Sym.Comb.CombPrimitive as CP
 
 
--- public export
+public export
 data E: (Type -> Type -> Type) -> Type -> Type -> Type where
   F: {auto aIsSig: Sig a} -> {auto bIsSig: Sig b}
    -> (E comb () a -> E comb () b) -> E comb a b
@@ -18,7 +18,8 @@ data E: (Type -> Type -> Type) -> Type -> Type -> Type where
     -> E comb () a -> E comb () b -> E comb () (a, b)
   C: comb a b -> E comb a b
 
-toComb: (Comb comb, Primitive comb) 
+public export
+toComb: (Comb comb) 
   => {auto aIsSig: Sig a} 
   -> {auto bIsSig: Sig b} 
   -> E comb a b -> comb a b
@@ -29,7 +30,7 @@ toComb (P x y) = prod (toComb x) (toComb y)
 toComb (C x) = x
 
 public export
-(Comb comb, Primitive comb) => Comb (E comb) where
+(Comb comb) => Comb (E comb) where
   lam f = F f
   app (F f) p@(P x y) = f p
   app f@(F _) e = 
@@ -45,22 +46,23 @@ public export
   proj2 x = C $ proj2 $ toComb x
   unit = C $ unit
 
+public export
 (Comb comb, Primitive comb) => Primitive (E comb) where
-  const = ?rc
+  const x = C $ const x
   add x y = C $ add (toComb x) (toComb y)
-  concat = ?con
-  and = ?rand
-  or = ?ror
-  xor = ?rxor
-  not = ?rnot
+  concat x y = C $ concat (toComb x) (toComb y)
+  and x y = C $ and (toComb x) (toComb y)
+  or x y = C $ or (toComb x) (toComb y)
+  xor x y = C $ xor (toComb x) (toComb y)
+  not x = C $ not (toComb x)
   slice l u x = C $ slice l u (toComb x)
-  eq = ?req
-  ltu = ?rltu
-  lt = ?rlt
-  mux21 = ?rmux
-  shiftLL = ?rsll
-  shiftRL = ?rsrl
-  shiftRA = ?rsra
+  eq x y = C $ eq (toComb x) (toComb y)
+  ltu x y = C $ ltu (toComb x) (toComb y)
+  lt x y = C $ lt (toComb x) (toComb y)
+  mux21 b x y = C $ mux21 (toComb b) (toComb x) (toComb y)
+  shiftLL k x = C $ shiftLL k (toComb x)
+  shiftRL k x = C $ shiftRL k (toComb x)
+  shiftRA k x = C $ shiftRA k (toComb x)
 
 
 export

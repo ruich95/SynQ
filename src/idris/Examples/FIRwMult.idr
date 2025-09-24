@@ -5,6 +5,8 @@ import Impl.TAC
 import Control.Monad.State
 import Data.Vect
 
+import Sym.CombP
+
 import Examples.BalanceTree
 
 public export
@@ -32,6 +34,17 @@ Arith TACComb where
                 var <- genVar (BvTy n)
                 let new_op = [ADD x.output y.output var]
                 pure $ MkTAC U var (MkSt U) (x.ops ++ y.ops ++ new_op)
+                
+(Comb comb, Arith comb) => Arith (E comb) where
+  mult x y = C $ mult (toComb x) (toComb y)
+  add' x y = C $ add' (toComb x) (toComb y)
+  
+prodElim2: (Comb comb, Arith comb) 
+  => {auto aIsSig: Sig a} 
+  -> {auto bIsSig: Sig b} 
+  -> (forall comb' . (Comb comb', Arith comb') => comb' a b) 
+  -> comb a b
+prodElim2 f = toComb f
 
 %unhide SeqLib.(>>=)
 
@@ -63,7 +76,7 @@ sameShape {n = 0} = U
 sameShape {n = (S 0)} = similar
 sameShape {n = (S (S k))} = P similar (sameShape {n=(S k)})
 
-dropLast: (Comb comb, Primitive comb)
+dropLast: (Comb comb)
   => {auto aIsSig: Sig a} 
   -> {n: _}
   -> comb () (Repeat (S n) a)
@@ -74,7 +87,7 @@ dropLast {n = (S (S k))} x =
   let _ = repeatSig (S k) aIsSig
   in prod (proj1 x) (dropLast $ proj2 x)
 
-getLast: (Comb comb, Primitive comb)
+getLast: (Comb comb)
   => {auto aIsSig: Sig a} 
   -> {n: _}
   -> comb () (Repeat (S n) a)
@@ -134,6 +147,11 @@ sum1 x =
       adder = lam $ \xin => add' (proj1 xin) (proj2 xin)
   in (reduce adder) << x
 
+adder2: (Comb comb, Arith comb) 
+  => {n: _}
+  -> comb (BitVec n, BitVec n) (BitVec n) 
+adder2 = lam $ \xin => add' (proj1 {aIsSig= BV {n=n}} xin) (proj2 xin)
+
 sum2: (Comb comb, Arith comb) 
   => {m: _} -> {n: _} 
   -> comb () (Repeat (S m) $ BitVec n)
@@ -141,8 +159,7 @@ sum2: (Comb comb, Arith comb)
 sum2 x = 
   let all = repeatImpliesAll {a=BitVec n} m
       sig = repeatSig (S m) $ BV {n=n}
-      adder = lam $ \xin => add' (proj1 {aIsSig= BV {n=n}} xin) (proj2 xin)
-  in (balancedReduce {max_iter=30} adder) << x
+  in prodElim2 (balancedReduce {max_iter=200} adder2) << x
 
 export
 mkFIR: (Seq comb seq, Primitive comb, Arith comb)
@@ -186,7 +203,7 @@ mkFIR' coefs (MkReg get set) =
        do cur <- get 
           let cur = prod xin cur
               weighted = (multKs {coefW=coefW} coefs cur)
-              o = sum2 {m=S m} weighted
+              o = sum1 {m=S m} weighted
               nxt = dropLast {aIsSig=BV {n=n}} {n=S m} cur
           _ <- set nxt
           pure $ o

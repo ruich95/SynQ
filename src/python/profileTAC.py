@@ -9,10 +9,10 @@ from pathlib import Path
 
 mapping = ["P1", "P2"]
 
-nSample = 1000
+nSample = 10000
 
-regularTACPath = Path("../../regularFIR32.json")
-balancedTACPath = Path("../../balancedFIR32_20.json")
+regularTACPath = Path("../../regularFIR128.json")
+balancedTACPath = Path("../../balancedFIR128.json")
 
 testMapping = {"input": ["P1"], 
                "output": ["P1"],
