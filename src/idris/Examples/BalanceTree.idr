@@ -89,24 +89,24 @@ balance {max_iter = (S k)} {asSig=P lSig rSig} tr
     else let left  = proj1 tr
              right = proj2 tr
          in case getShape (AllP shapeL shapeR) of
-                 Balance => 
-                   let (lty ** (left', allL, sigL))  = balance {max_iter = S k} left  {shape=shapeL}
-                       (rty ** (right', allR, sigR)) = balance {max_iter = S k} right {shape=shapeR}
-                   in ((lty, rty) ** (prod left' right', AllP allL allR, P sigL sigR))
-                 LL => 
-                   let (ty' ** (tr', all', sig')) = rotateR tr (AllP shapeL shapeR)
-                   in balance {max_iter=k} tr' {shape=all'}
-                 RR => 
-                   let (ty' ** (tr', all', sig')) = rotateL tr (AllP shapeL shapeR)
-                   in balance {max_iter=k} tr' {shape=all'}
-                 (LR leftL leftR x) =>
-                   let (tyl ** (left', allL, sigL)) = rotateL left shapeL
-                       (ty' ** (tr', all', sig')) = rotateR (prod left' right) (AllP allL shapeR)
-                   in balance {max_iter=k} tr' {shape=all'}
-                 (RL x rightL rightR) => 
-                   let (tyr ** (right', allR, sigR)) = rotateR right shapeR
-                       (ty' ** (tr', all', sig')) = rotateL (prod left right') (AllP shapeL allR)
-                   in balance {max_iter=k} tr' {shape=all'}
+              Balance => 
+                let (lty ** (left', allL, sigL))  = balance {max_iter = S k} left  {shape=shapeL}
+                    (rty ** (right', allR, sigR)) = balance {max_iter = S k} right {shape=shapeR}
+                in ((lty, rty) ** (prod left' right', AllP allL allR, P sigL sigR))
+              LL => 
+                let (ty' ** (tr', all', sig')) = rotateR tr (AllP shapeL shapeR)
+                in balance {max_iter=k} tr' {shape=all'}
+              RR => 
+                let (ty' ** (tr', all', sig')) = rotateL tr (AllP shapeL shapeR)
+                in balance {max_iter=k} tr' {shape=all'}
+              (LR leftL leftR x) =>
+                let (tyl ** (left', allL, sigL)) = rotateL left shapeL
+                    (ty' ** (tr', all', sig')) = rotateR (prod left' right) (AllP allL shapeR)
+                in balance {max_iter=k} tr' {shape=all'}
+              (RL x rightL rightR) => 
+                let (tyr ** (right', allR, sigR)) = rotateR right shapeR
+                    (ty' ** (tr', all', sig')) = rotateL (prod left right') (AllP shapeL allR)
+                in balance {max_iter=k} tr' {shape=all'}
 
 export
 balancedReduce: {a:_} -> {default 20 max_iter: Nat} 

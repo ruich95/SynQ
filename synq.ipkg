@@ -23,7 +23,7 @@ modules = SynQ
 
 -- name of executable
 -- executable =
-opts = "--profile"
+-- opts = "--profile"
 sourcedir = "./src/idris"
 -- builddir =
 -- outputdir =

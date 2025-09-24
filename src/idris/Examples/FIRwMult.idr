@@ -48,6 +48,7 @@ RepeatSt (S 0) s = s
 RepeatSt (S (S k)) s = LPair s (RepeatSt (S k) s)
 
 %hint
+export
 repeatSt: {auto sIsSt: St s} -> {n: Nat} -> St (RepeatSt n s)
 repeatSt {n = 0} = LU
 repeatSt {n = (S 0)} = sIsSt
@@ -141,7 +142,7 @@ sum2 x =
   let all = repeatImpliesAll {a=BitVec n} m
       sig = repeatSig (S m) $ BV {n=n}
       adder = lam $ \xin => add' (proj1 {aIsSig= BV {n=n}} xin) (proj2 xin)
-  in (balancedReduce {max_iter=400} adder) << x
+  in (balancedReduce {max_iter=30} adder) << x
 
 export
 mkFIR: (Seq comb seq, Primitive comb, Arith comb)

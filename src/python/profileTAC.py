@@ -9,10 +9,10 @@ from pathlib import Path
 
 mapping = ["P1", "P2"]
 
-nSample = 10000
+nSample = 1000
 
-regularTACPath = Path("../../regularFIR25.json")
-balancedTACPath = Path("../../balancedFIR25.json")
+regularTACPath = Path("../../regularFIR32.json")
+balancedTACPath = Path("../../balancedFIR32_20.json")
 
 testMapping = {"input": ["P1"], 
                "output": ["P1"],
@@ -105,10 +105,10 @@ with open(balancedTACPath, "r") as fRegular:
         stepsBalanced.append(resBalanced["steps"])
         communicationsBalanced.append(resBalanced["communications"])
 
-with open("{}_res_2.json".format(regularTACPath.stem), "w") as fRes:
+with open("{}_res.json".format(regularTACPath.stem), "w") as fRes:
     json.dump({"steps": stepsRegular, "communications": communicationsRegular}, fRes)
 
-with open("{}_res_2.json".format(balancedTACPath.stem), "w") as fRes:
+with open("{}_res.json".format(balancedTACPath.stem), "w") as fRes:
     json.dump({"steps": stepsBalanced, "communications": communicationsBalanced}, fRes)
     #plt.show()
          
