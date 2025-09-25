@@ -11,8 +11,8 @@ mapping = ["P1", "P2"]
 
 nSample = 10000
 
-regularTACPath = Path("../../regularFIR128.json")
-balancedTACPath = Path("../../balancedFIR128.json")
+regularTACPath = Path("../../regularFIR128_50.json")
+balancedTACPath = Path("../../regularFIR128_100.json")
 
 testMapping = {"input": ["P1"], 
                "output": ["P1"],
@@ -80,28 +80,46 @@ with open(regularTACPath, "r") as fRegular:
 with open(balancedTACPath, "r") as fRegular:
     tacBalanced = json.load(fRegular)
 
-    for i in tqdm.tqdm(range(nSample)):
-        mapping = randomMapping(tacRegular, "P1", "P2")
+    for i in tqdm.tqdm(range(nSample//2)):
+        mapping1 = randomMapping(tacRegular, "P1", "P2")
+        mapping2 = randomMapping(tacRegular, "P1", "P2")
         
-        qRegular = Queue()
-        qBalanced = Queue()
+        qRegular1  = Queue()
+        qBalanced1 = Queue()
+        qRegular2  = Queue()
+        qBalanced2 = Queue()
 
-        pRegular = Process(target=profileTAC, args=(tacRegular, mapping, qRegular))
-        pRegular.start()
+        pRegular1 = Process(target=profileTAC, args=(tacRegular, mapping1, qRegular1))
+        pRegular1.start()
 
-        pBalanced = Process(target=profileTAC, args=(tacBalanced, mapping, qBalanced))
-        pBalanced.start()
+        pRegular2 = Process(target=profileTAC, args=(tacRegular, mapping2, qRegular2))
+        pRegular2.start()
 
-        pRegular.join()
-        pBalanced.join()
+        pBalanced1 = Process(target=profileTAC, args=(tacBalanced, mapping1, qBalanced1))
+        pBalanced1.start()
 
+        pBalanced2 = Process(target=profileTAC, args=(tacBalanced, mapping2, qBalanced2))
+        pBalanced2.start()
+
+        pRegular1.join()
         # resRegular = profileTAC(tacRegular, mapping)
-        resRegular = qRegular.get()
+        resRegular = qRegular1.get()
         stepsRegular.append(resRegular["steps"])
         communicationsRegular.append(resRegular["communications"])
 
+        pBalanced1.join()
         # resBalanced = profileTAC(tacBalanced, mapping) 
-        resBalanced = qBalanced.get()
+        resBalanced = qBalanced1.get()
+        stepsBalanced.append(resBalanced["steps"])
+        communicationsBalanced.append(resBalanced["communications"])
+
+        pRegular2.join()
+        resRegular = qRegular2.get()
+        stepsRegular.append(resRegular["steps"])
+        communicationsRegular.append(resRegular["communications"])
+
+        pBalanced2.join()
+        resBalanced = qBalanced2.get()
         stepsBalanced.append(resBalanced["steps"])
         communicationsBalanced.append(resBalanced["communications"])
 

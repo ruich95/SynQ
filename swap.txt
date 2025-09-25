@@ -1,7 +1,0 @@
-input: (x_0, x_1): (BV 8, BV 8)
-output: (x_5, x_1): (BV 8, BV 8)
-state: !(): ()
-x_2: BV 9 = x_0: BV 8 + x_1: BV 8
-x_3: BV 8 = (x_2: BV 9)<0:8>
-x_4: BV 9 = x_3: BV 8 + x_1: BV 8
-x_5: BV 8 = (x_4: BV 9)<0:8>

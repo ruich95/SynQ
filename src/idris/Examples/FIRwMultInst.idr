@@ -6,7 +6,7 @@ import System.File
 
 import Impl.TAC
 
-import Sym.CombP
+import Trans.ProdElim
 
 %hide Data.Linear.Interface.seq
 -- %hide Prelude.(>>=)
@@ -41,69 +41,24 @@ coefs = [0, 0, 0, 0, 0, 0, 65535, 65535, 1, 1, 0, 65533, 65535, 4, 3, 65531, 655
 -- coefs: Vect 16 Bits64
 -- coefs = [1381, 3033, 2827, 65319, 62375, 64338, 6190, 13188, 13188, 6190, 64338, 62375, 65319, 2827, 3033, 1381]
 
-initN: (Comb comb, Primitive comb)
-    => {w: Nat} 
-    -> (n: Nat) 
-    -> comb () (BitVec w) 
-    -> comb () (Repeat n (BitVec w))
-initN 0         x = unit
-initN (S 0)     x = x
-initN (S (S k)) x = 
-  let _ = repeatSig (S k) $ BV {n=w} 
-  in prod x $ initN (S k) x
+PredNTaps: Nat
+PredNTaps = 127
 
-initSt: {w: Nat} 
-     -> (n: Nat) 
-     -> (BitVec w) 
-     -> RepeatSt n $ !* (BitVec w)
-initSt 0         x = ()
-initSt (S 0)     x = MkBang x
-initSt (S (S k)) x = (MkBang x) # initSt (S k) x
-
--- fir: (Seq comb seq, Primitive comb, Arith comb)
---   => (1 reg: Reg (Repeat 127 (BitVec 16)) comb seq)
---   -> seq (RepeatSt 127 $ !* (BitVec 16))
---          (BitVec 1, BitVec 1, BitVec 16) (BitVec 32)
--- fir reg = 
---   let init = initN 127 (const $ BV 0)
---   in mkFIR {coefW=16} init coefs reg 
-
-fir': (Seq comb seq, Primitive comb, Arith comb)
-   => (1 reg: Reg (Repeat 127 (BitVec 16)) comb seq)
-   -> seq (RepeatSt 127 $ !* (BitVec 16))
+fir: (Seq comb seq, Primitive comb, Arith comb)
+   => (1 reg: Reg (Repeat PredNTaps (BitVec 16)) comb seq)
+   -> seq (RepeatSt PredNTaps $ !* (BitVec 16))
           (BitVec 16) (BitVec 32)
-fir' reg = 
-  mkFIR' {coefW=16} coefs reg 
+fir reg = 
+  let _ = repeatSig PredNTaps (BV {n=32})
+  in mkFIR' {coefW=16} (prodElim $ sum2 {m=PredNTaps} 50) coefs reg 
+     -- mkFIR' {coefW=16} (sum1 {m=PredNTaps}) coefs reg 
 
--- firTAC: FTAC
--- firTAC = moveState $ elimDead $ elimGet $ flatTAC $ genTAC (fir reg)
-
-firTAC': FTAC
-firTAC' = 
-  let _ : (St (RepeatSt 127 $ !* (BitVec 16))) = repeatSt {n=127}
-  in moveState $ elimDead $ elimGet $ flatTAC $ genTAC (fir' reg)
+firTAC: FTAC
+firTAC = 
+  let _ : (St (RepeatSt PredNTaps $ !* (BitVec 16))) = repeatSt {n=PredNTaps}
+  in moveState $ elimDead $ elimGet $ flatTAC $ genTAC (fir reg)
 
 rawFIR: TAC
 rawFIR = 
-  let _ : (St (RepeatSt 127 $ !* (BitVec 16))) = repeatSt {n=127}
-  in genTAC (fir' reg)
-
--- swap: (Comb comb, Primitive comb)
---   => comb () (UInt8, UInt8)
---   -> comb () (UInt8, UInt8) 
--- swap x = prod (adder' (proj1 x) (proj2 x))
---               (proj2 x)
-
--- testSys: (Comb comb, Primitive comb)
---   => comb () (UInt8, UInt8)
---   -> comb () (UInt8, UInt8) 
--- testSys x = swap $ swap x
-
--- tt: (Seq comb seq, Primitive comb)
---   => seq (!* UInt8) 
---          (UInt8, UInt8)
---          (UInt8, UInt8)
--- tt = Seq.pure $ prodElim $ lam testSys
-
--- ttac: TAC
--- ttac = genTAC (tt {comb = TACComb})
+  let _ : (St (RepeatSt PredNTaps $ !* (BitVec 16))) = repeatSt {n=PredNTaps}
+  in genTAC (fir reg)

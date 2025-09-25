@@ -5,9 +5,10 @@ import Impl.TAC
 import Control.Monad.State
 import Data.Vect
 
-import Sym.CombP
+-- import Sym.CombP
 
 import Examples.BalanceTree
+import Trans.ProdElim
 
 public export
 interface Arith (0 comb: Type -> Type -> Type) where
@@ -34,17 +35,11 @@ Arith TACComb where
                 var <- genVar (BvTy n)
                 let new_op = [ADD x.output y.output var]
                 pure $ MkTAC U var (MkSt U) (x.ops ++ y.ops ++ new_op)
-                
-(Comb comb, Arith comb) => Arith (E comb) where
-  mult x y = C $ mult (toComb x) (toComb y)
-  add' x y = C $ add' (toComb x) (toComb y)
-  
-prodElim2: (Comb comb, Arith comb) 
-  => {auto aIsSig: Sig a} 
-  -> {auto bIsSig: Sig b} 
-  -> (forall comb' . (Comb comb', Arith comb') => comb' a b) 
-  -> comb a b
-prodElim2 f = toComb f
+
+public export              
+(Comb comb, Arith comb) => Arith (PView comb) where
+  mult x y = lift2 mult x y
+  add' x y = lift2 add' x y
 
 %unhide SeqLib.(>>=)
 
@@ -137,29 +132,29 @@ firState (S k) init (MkReg get set) =
             set nxt) 
      # get
 
-sum1: (Comb comb, Arith comb) 
-  => {m: _} -> {n: _} 
-  -> comb () (Repeat (S m) $ BitVec n)
-  -> comb () (BitVec n)
-sum1 x = 
-  let all = repeatImpliesAll {a=BitVec n} m
-      sig = repeatSig (S m) $ BV {n=n}
-      adder = lam $ \xin => add' (proj1 xin) (proj2 xin)
-  in (reduce adder) << x
-
 adder2: (Comb comb, Arith comb) 
   => {n: _}
   -> comb (BitVec n, BitVec n) (BitVec n) 
 adder2 = lam $ \xin => add' (proj1 {aIsSig= BV {n=n}} xin) (proj2 xin)
 
-sum2: (Comb comb, Arith comb) 
+export
+sum1: (Comb comb, Arith comb) 
   => {m: _} -> {n: _} 
-  -> comb () (Repeat (S m) $ BitVec n)
-  -> comb () (BitVec n)
-sum2 x = 
+  -> comb (Repeat (S m) $ BitVec n) (BitVec n)
+sum1 = 
   let all = repeatImpliesAll {a=BitVec n} m
       sig = repeatSig (S m) $ BV {n=n}
-  in prodElim2 (balancedReduce {max_iter=200} adder2) << x
+  in lam $ \x => (reduce adder2) << x
+
+export
+sum2: (Comb comb, Arith comb) 
+  => {m: _} -> {n: _} 
+  -> (max_iter: Nat)
+  -> comb (Repeat (S m) $ BitVec n) (BitVec n)
+sum2 max_iter = 
+  let all = repeatImpliesAll {a=BitVec n} m
+      sig = repeatSig (S m) $ BV {n=n}
+  in lam $ \x => (balancedReduce {max_iter=max_iter} adder2) << x
 
 export
 mkFIR: (Seq comb seq, Primitive comb, Arith comb)
@@ -182,7 +177,7 @@ mkFIR init coefs reg =
        in do cur' <- firStGet
              let cur = prod xin cur'
                  weighted = (multKs {coefW=coefW} coefs cur)
-                 o = sum2 {m=S m} weighted
+                 o = (sum2 {m=S m} 20) << weighted
                  nxt = dropLast {aIsSig=BV {n=n}} {n=S m} cur
              _ <- firStSet rst skip nxt
              pure $ o
@@ -191,19 +186,21 @@ mkFIR init coefs reg =
 export
 mkFIR': (Seq comb seq, Primitive comb, Arith comb)
   => {m: Nat} -> {n: Nat} -> {coefW: Nat}
+  -> (fSum: comb (Repeat (S $ S m) (BitVec $ coefW+n)) (BitVec $ coefW+n))
   -> (coefs: Vect (S $ S m) Bits64)
   -> (1 reg: Reg (Repeat (S m) (BitVec n)) comb seq)
   -> seq (RepeatSt (S m) (!* (BitVec n)))
          (BitVec n) (BitVec $ coefW+n)
-mkFIR' coefs (MkReg get set) = 
+mkFIR' fSum coefs (MkReg get set) = 
   let prf1 = repeatSt {sIsSt= LV {n=n}} {n=S m}
       prf2 = repeatSig (S m) (BV {n=n})
+      prf4 = repeatSig (S m) (BV {n=coefW+n})
       prf3 = sameShape {similar=BV {n=n}} {n=S m}
   in abst $ \xin => 
        do cur <- get 
           let cur = prod xin cur
               weighted = (multKs {coefW=coefW} coefs cur)
-              o = sum1 {m=S m} weighted
+              o = fSum << weighted
               nxt = dropLast {aIsSig=BV {n=n}} {n=S m} cur
           _ <- set nxt
           pure $ o
