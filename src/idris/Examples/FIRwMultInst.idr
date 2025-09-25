@@ -50,7 +50,7 @@ fir: (Seq comb seq, Primitive comb, Arith comb)
           (BitVec 16) (BitVec 32)
 fir reg = 
   let _ = repeatSig PredNTaps (BV {n=32})
-  in mkFIR' {coefW=16} (prodElim $ sum2 {m=PredNTaps} 50) coefs reg 
+  in mkFIR' {coefW=16} (prodElim $ sum2 {m=PredNTaps} 120) coefs reg 
      -- mkFIR' {coefW=16} (sum1 {m=PredNTaps}) coefs reg 
 
 firTAC: FTAC

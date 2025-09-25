@@ -11,8 +11,8 @@ mapping = ["P1", "P2"]
 
 nSample = 10000
 
-regularTACPath = Path("../../regularFIR128_50.json")
-balancedTACPath = Path("../../regularFIR128_100.json")
+regularTACPath = Path("../../balancedFIR128_75.json")
+balancedTACPath = Path("../../balancedFIR128_110.json")
 
 testMapping = {"input": ["P1"], 
                "output": ["P1"],
