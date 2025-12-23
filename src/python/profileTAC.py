@@ -6,13 +6,7 @@ import random
 from multiprocessing import Process, Queue
 import tqdm
 from pathlib import Path
-
-mapping = ["P1", "P2"]
-
-nSample = 10000
-
-regularTACPath = Path("../../balancedFIR128_75.json")
-balancedTACPath = Path("../../balancedFIR128_110.json")
+from sys import argv
 
 testMapping = {"input": ["P1"], 
                "output": ["P1"],
@@ -33,6 +27,10 @@ def randomMapping(tac, mapInput, mapOutput):
 
     return {"input": iMap, "output": oMap, "state": sMap, "ops": opMap}
 
+def mappingGen(tac, mapInput, mapOutput, seed=233):
+    random.seed(seed)
+    while(True):
+        yield randomMapping(tac, mapInput, mapOutput)
 
 class ProfileTAC(object):
     def __init__(self, exec_path: str, silent: bool = True):
@@ -69,64 +67,78 @@ def profileTAC(tac:json, mapping:json, queue):
     queue.put(res)
 
 
-stepsRegular = []
-stepsBalanced = []
-communicationsRegular = []
-communicationsBalanced = []
-
-with open(regularTACPath, "r") as fRegular:
-    tacRegular = json.load(fRegular)
-    
-with open(balancedTACPath, "r") as fRegular:
-    tacBalanced = json.load(fRegular)
-
-    for i in tqdm.tqdm(range(nSample//2)):
-        mapping1 = randomMapping(tacRegular, "P1", "P2")
-        mapping2 = randomMapping(tacRegular, "P1", "P2")
+if __name__ == "__main__":
+    if len(argv) != 4:
+        print("Usage: python profileTAC <nSamples> <baseline tac> <balanced tac>")
         
-        qRegular1  = Queue()
-        qBalanced1 = Queue()
-        qRegular2  = Queue()
-        qBalanced2 = Queue()
+    else:
+        nSample = int(argv[1])
 
-        pRegular1 = Process(target=profileTAC, args=(tacRegular, mapping1, qRegular1))
-        pRegular1.start()
+        regularTACPath = Path(argv[2])
+        balancedTACPath = Path(argv[3])
 
-        pRegular2 = Process(target=profileTAC, args=(tacRegular, mapping2, qRegular2))
-        pRegular2.start()
+        stepsRegular = []
+        stepsBalanced = []
+        communicationsRegular = []
+        communicationsBalanced = []
 
-        pBalanced1 = Process(target=profileTAC, args=(tacBalanced, mapping1, qBalanced1))
-        pBalanced1.start()
+        with open(regularTACPath, "r") as fRegular:
+            tacRegular = json.load(fRegular)
 
-        pBalanced2 = Process(target=profileTAC, args=(tacBalanced, mapping2, qBalanced2))
-        pBalanced2.start()
+        with open(balancedTACPath, "r") as fRegular:
+            tacBalanced = json.load(fRegular)
 
-        pRegular1.join()
-        # resRegular = profileTAC(tacRegular, mapping)
-        resRegular = qRegular1.get()
-        stepsRegular.append(resRegular["steps"])
-        communicationsRegular.append(resRegular["communications"])
+        mappings = mappingGen(tacRegular, "P1", "P2")
 
-        pBalanced1.join()
-        # resBalanced = profileTAC(tacBalanced, mapping) 
-        resBalanced = qBalanced1.get()
-        stepsBalanced.append(resBalanced["steps"])
-        communicationsBalanced.append(resBalanced["communications"])
+        for i in tqdm.tqdm(range(nSample//2)):
+            mapping1 = next(mappings)
+            mapping2 = next(mappings)
 
-        pRegular2.join()
-        resRegular = qRegular2.get()
-        stepsRegular.append(resRegular["steps"])
-        communicationsRegular.append(resRegular["communications"])
+            qRegular1  = Queue()
+            qBalanced1 = Queue()
+            qRegular2  = Queue()
+            qBalanced2 = Queue()
 
-        pBalanced2.join()
-        resBalanced = qBalanced2.get()
-        stepsBalanced.append(resBalanced["steps"])
-        communicationsBalanced.append(resBalanced["communications"])
+            pRegular1 = Process(target=profileTAC, args=(tacRegular, mapping1, qRegular1))
+            pRegular1.start()
 
-with open("{}_res.json".format(regularTACPath.stem), "w") as fRes:
-    json.dump({"steps": stepsRegular, "communications": communicationsRegular}, fRes)
+            pRegular2 = Process(target=profileTAC, args=(tacRegular, mapping2, qRegular2))
+            pRegular2.start()
 
-with open("{}_res.json".format(balancedTACPath.stem), "w") as fRes:
-    json.dump({"steps": stepsBalanced, "communications": communicationsBalanced}, fRes)
-    #plt.show()
-         
+            pBalanced1 = Process(target=profileTAC, args=(tacBalanced, mapping1, qBalanced1))
+            pBalanced1.start()
+
+            pBalanced2 = Process(target=profileTAC, args=(tacBalanced, mapping2, qBalanced2))
+            pBalanced2.start()
+
+            pRegular1.join()
+            # resRegular = profileTAC(tacRegular, mapping)
+            resRegular = qRegular1.get()
+            stepsRegular.append(resRegular["steps"])
+            communicationsRegular.append(resRegular["communications"])
+
+            pBalanced1.join()
+            # resBalanced = profileTAC(tacBalanced, mapping) 
+            resBalanced = qBalanced1.get()
+            stepsBalanced.append(resBalanced["steps"])
+            communicationsBalanced.append(resBalanced["communications"])
+
+            pRegular2.join()
+            resRegular = qRegular2.get()
+            stepsRegular.append(resRegular["steps"])
+            communicationsRegular.append(resRegular["communications"])
+
+            pBalanced2.join()
+            resBalanced = qBalanced2.get()
+            stepsBalanced.append(resBalanced["steps"])
+            communicationsBalanced.append(resBalanced["communications"])
+
+        regularResPath = regularTACPath.parent.joinpath("{}_res.json".format(regularTACPath.stem))
+        balancedResPath = balancedTACPath.parent.joinpath("{}_res.json".format(balancedTACPath.stem))
+
+        with open(regularResPath, "w") as fRes:
+            json.dump({"steps": stepsRegular, "communications": communicationsRegular}, fRes)
+
+        with open(balancedResPath, "w") as fRes:
+            json.dump({"steps": stepsBalanced, "communications": communicationsBalanced}, fRes)
+            #plt.show()

@@ -24,6 +24,7 @@ ppFTAC (MkFTAC inputs outputs sts ops) =
   ++ (map ((\s => "  \{s}") . show) outputs)
   ++ ["states:"]
   ++ (map ((\s => "  \{s}") . show) sts)
+  ++ ["ops:"]
   ++ (map ((\s => "  \{s}") . show) ops)
 
 ppFTAC2: FTAC2 -> List String

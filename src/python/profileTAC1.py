@@ -3,7 +3,8 @@ import subprocess
 import os
 import signal
 import random
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Pool
+from functools import partial
 import tqdm
 from pathlib import Path
 
@@ -11,7 +12,7 @@ mapping = ["P1", "P2"]
 
 nSample = 10000
 
-TACPath = Path("../../balancedFIR128_120.json")
+TACPath = Path("../../fir4.json")
 
 testMapping = {"input": ["P1"], 
                "output": ["P1"],
@@ -56,7 +57,7 @@ class ProfileTAC(object):
     def terminate(self):
         os.killpg(os.getpgid(self.profile_process.pid), signal.SIGTERM)
 
-def profileTAC(tac:json, mapping:json, queue):
+def profileTAC(tac:json, mapping:json):
     tacStr = json.dumps(tac)
     mapStr = json.dumps(mapping)
     try:
@@ -65,45 +66,66 @@ def profileTAC(tac:json, mapping:json, queue):
     finally:
         process.terminate()
     
-    queue.put(res)
+    return res
 
 
-steps = []
-communications = []
-
+def genMapping(tac, mapInput, mapOutput, numMapping):
+    def _genMapping():
+        for i in range(numMapping):
+            yield randomMapping(tac, mapInput, mapOutput)
+    
+    return _genMapping
 
 with open(TACPath, "r") as f:
     tac = json.load(f)
-    
 
-    for i in tqdm.tqdm(range(nSample//2)):
-        mapping1 = randomMapping(tac, "P1", "P2")
-        mapping2 = randomMapping(tac, "P1", "P2")
+mapping = {"input": ["P1"], 
+           "output": ["P1"],
+           "state":["P1", "P2", "P2"],
+           "ops": ["P1", "P2", "P2", "P1", "P1", "P2", "P2", "P2", "P1", "P1", "P1", "P2", "P2"]}
+
+print(profileTAC(tac, mapping))
+
+    # _mappings = genMapping(tac, "P1", "P2", nSample)
+    # mappings = _mappings()
+
+    # profileFn = partial(profileTAC, tac)
+
+    # with Pool(16) as pool:
+    #     res = tqdm.tqdm(pool.imap(profileFn, mappings), total=nSample)
+    #     steps = map(lambda x: x["steps"], res)
+    #     communications = map(lambda x: x["communications"], res)
+
+    # with open("{}_res.json".format(TACPath.stem), "w") as fRes:
+    #     json.dump({"steps": list(steps), "communications": list(communications)}, fRes)
+
+    # for i in tqdm.tqdm(range(nSample//2)):    
+    #     mapping1 = randomMapping(tac, "P1", "P2")
+    #     mapping2 = randomMapping(tac, "P1", "P2")
         
-        q1  = Queue()
-        q2  = Queue()
+    #     q1  = Queue()
+    #     q2  = Queue()
         
 
-        p1 = Process(target=profileTAC, args=(tac, mapping1, q1))
-        p1.start()
+    #     p1 = Process(target=profileTAC, args=(tac, mapping1, q1))
+    #     p1.start()
 
-        p2 = Process(target=profileTAC, args=(tac, mapping2, q2))
-        p2.start()
+    #     p2 = Process(target=profileTAC, args=(tac, mapping2, q2))
+    #     p2.start()
 
-        p1.join()
-        # resRegular = profileTAC(tacRegular, mapping)
-        res = q1.get()
-        steps.append(res["steps"])
-        communications.append(res["communications"])
+    #     p1.join()
+    #     # resRegular = profileTAC(tacRegular, mapping)
+    #     res = q1.get()
+    #     steps.append(res["steps"])
+    #     communications.append(res["communications"])
 
 
-        p2.join()
-        res = q2.get()
-        steps.append(res["steps"])
-        communications.append(res["communications"])
+    #     p2.join()
+    #     res = q2.get()
+    #     steps.append(res["steps"])
+    #     communications.append(res["communications"])
 
-with open("{}_res.json".format(TACPath.stem), "w") as fRes:
-    json.dump({"steps": steps, "communications": communications}, fRes)
+
 
     #plt.show()
          

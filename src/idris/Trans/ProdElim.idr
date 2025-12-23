@@ -97,6 +97,27 @@ prodElim: (Comb comb)
 prodElim (IsF f) = lam $ \x => fromVal $ f (V x)
 prodElim (IsV x) = fromVal x
 
+prodElim'': (Comb comb)
+  => {auto aIsSig: Sig a}
+  -> comb () a -> PVal comb a
+prodElim'' {aIsSig = (P y z)} x = P (prodElim'' $ proj1 x) (prodElim'' $ proj2 x)
+prodElim'' x = V x
+
+prodElim': (Comb comb)
+  => {auto aIsSig: Sig a}
+  -> {auto bIsSig: Sig b}
+  -> comb a b -> PView comb a b
+prodElim' {aIsSig=U} x = IsV $ prodElim'' x
+prodElim' f = IsF $ \x => prodElim'' $ app f (fromVal x)
+
+export
+prodElim2: (Comb comb)
+  => {auto aIsSig: Sig a}
+  -> {auto bIsSig: Sig b}
+  -> comb a b -> comb a b
+prodElim2 = prodElim . prodElim'
+
+
 
 -- prodElim: (Comb comb, Primitive comb)
 --   => {auto aIsSig: Sig a}

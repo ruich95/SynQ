@@ -204,3 +204,34 @@ mkFIR' fSum coefs (MkReg get set) =
               nxt = dropLast {aIsSig=BV {n=n}} {n=S m} cur
           _ <- set nxt
           pure $ o
+
+export
+mkFIR2: (Seq comb seq, Primitive comb, Arith comb)
+  => {m: Nat} -> {n: Nat} -> {coefW: Nat}
+  -> (coefs: Vect (S $ S m) Bits64)
+  -> (1 reg: Reg (Repeat (S m) (BitVec n)) comb seq)
+  -> seq (RepeatSt (S m) (!* (BitVec n)))
+         (BitVec n) (BitVec $ coefW+n)
+mkFIR2 coefs (MkReg get set) = 
+  let prf1 = repeatSt {sIsSt= LV {n=n}} {n=S m}
+      prf2 = repeatSig (S m) (BV {n=n})
+      prf4 = repeatSig (S m) (BV {n=coefW+n})
+      prf3 = sameShape {similar=BV {n=n}} {n=S m}
+  in abst $ \xin => 
+       do cur <- get 
+          let cur = prod xin cur
+              weighted = (multKs {coefW=coefW} coefs cur)
+              o = (prodElim $ sum) << weighted
+              nxt = dropLast {aIsSig=BV {n=n}} {n=S m} cur
+          _ <- set nxt
+          pure $ o
+where
+  sum: {0 comb': _} -> (Comb comb', Arith comb') 
+    => comb' (Repeat (S $ S m) $ BitVec (coefW+n)) (BitVec $ coefW+n)
+  sum = 
+    let all = repeatImpliesAll {a=BitVec (coefW + n)} m
+        sig = repeatSig (S $ S m) $ BV {n=coefW + n}
+        prf5 = repeatImpliesAll {a=BitVec $ coefW+n} (S m)
+    in lam $ \x => 
+         let (_ ** (x', _, _))  = balance x {shape=prf5}
+         in  (reduce adder2) << x'

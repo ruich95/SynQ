@@ -76,6 +76,7 @@ allBalanced (AllP l r)
     in allBalanced l && allBalanced r 
     && ((dl == dr) || (dl == S dr) || (S dl == dr))
 
+export
 balance: {ty:_} -> (Comb comb)
   => {default 20 max_iter: Nat} 
   -> {auto asSig: Sig as} -> comb () as -> {auto shape: All (OfType ty) as}
