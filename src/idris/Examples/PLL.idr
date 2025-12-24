@@ -6,16 +6,19 @@ import System.File
 %hide Prelude.const
 
 namespace NCO
-
+  export
   NCOStVal: Type
   NCOStVal = BitVec 24
   
+  export
   NCOSt: Type
   NCOSt = !* (BitVec 24)
   
+  export
   ncoInitSt: NCOSt
   ncoInitSt = MkBang $ BV 0
   
+  export
   nco: (Seq comb seq, Primitive comb) 
     => (1 acc: Reg NCOStVal comb seq)
     -> seq NCOSt (BitVec 24) (BitVec 14)
@@ -149,19 +152,21 @@ namespace DFF
        pure output
        
 namespace PFD
-  
+  export
   PFDStVal: Type
   PFDStVal = (BitVec 1, DFFStVal, DFFStVal)
   
-  
+  export
   PFDSt: Type
   PFDSt = LPair (!* BitVec 1) $ LPair DFFSt DFFSt
   
+  export
   pfdInitSt: PFDSt
   pfdInitSt = (MkBang $ BV 0) # dffInitSt # dffInitSt
   
   
   %ambiguity_depth 6
+  export
   pfd: (Seq comb seq, Primitive comb) 
     => (1 dffAReg: Reg DFFStVal comb seq)
     -> (1 dffBReg: Reg DFFStVal comb seq)
@@ -187,6 +192,7 @@ namespace PFD
             fflush stdout
             inputSig <- (pure $ BitVec.fromInteger . cast) <*> getLine
             pure (refSig, inputSig)
+  %hide Prelude.(>>=)
             
   pfdFn: (BitVec 1, BitVec 1) -> LState PFDSt (BitVec 1, BitVec 1)
   pfdFn = runSeq 
@@ -207,9 +213,92 @@ namespace PFD
   pfdProg: IO ()
   pfdProg = reactMealy @{(pfdOutShow, pfdStShow)} read pfdFn pfdInitSt
   
-            
+  export
+  pfd': (Seq comb seq, Primitive comb) 
+    => (1 dffAReg: Reg DFFStVal comb seq)
+    -> (1 dffBReg: Reg DFFStVal comb seq)
+    -> (1 reg: Reg (BitVec 1) comb seq)
+    -> seq PFDSt (BitVec 1, BitVec 1) (BitVec 1, BitVec 1)
+  pfd' dffAReg dffBReg reg = abst $ \ins => pfd dffAReg dffBReg reg (proj1 ins) (proj2 ins)
   
+  export
+  genVerilog: IO ()
+  genVerilog = writeVerilog "pfd" $ pfd' reg reg reg
   
-                       
+namespace ACC
+  export
+  ACCSt': Type
+  ACCSt' = BitVec 32
+  
+  export
+  ACCSt: Type 
+  ACCSt = !* BitVec 32
+  
+  export
+  acc: (Seq comb seq, Primitive comb) 
+    => (1 reg: Reg ACCSt' comb seq)
+    -> (input: comb () (BitVec 1, BitVec 1))
+    -> seq ACCSt () (BitVec 32)
+  acc (MkReg get set) input = 
+    let a2b = proj1 input
+        b2a = proj2 input
+    in do prev_acc <- get 
+          let nxt_acc = mux21 (a2b `xor` b2a) 
+                          (mux21 a2b
+                             (adder' prev_acc (const $ BV 1))
+                             (adder' prev_acc (not $ const $ BV 0)))
+                          prev_acc
+          _ <- set nxt_acc
+          pure $ shiftLL 10 nxt_acc
+          
+  export
+  genVerilog: IO ()
+  genVerilog = writeVerilog "acc" $ abst $ \input => acc reg input
+  
+namespace DIV2
+  
+  export
+  DIV2St': Type
+  DIV2St' = (BitVec 1, BitVec 1)
+  
+  export
+  DIV2St: Type
+  DIV2St = LPair (!* BitVec 1)  (!* BitVec 1)
+  
+  export
+  div2: (Seq comb seq, Primitive comb)
+     => (1 reg: Reg DIV2St' comb seq)
+     -> (input: comb () $ BitVec 1)
+     -> seq DIV2St () (BitVec 1)
+  div2 (MkReg get set) input = 
+    do prevInOut <- get
+       let prevIn  = proj1 prevInOut
+           prevOut = proj2 prevInOut
+           rising  = (not prevIn) `and` input
+           output  = mux21 rising
+                       (not prevOut)
+                       prevOut
+       _ <- set $ prod input output
+       pure output
+  
+  export
+  genVerilog: IO ()
+  genVerilog = writeVerilog "div2" $ abst $ \input => div2 reg input
+  
+PLLSt':Type
+PLLSt' = (PFDStVal, (DIV2St', (ACCSt', NCOStVal)))
+
+PLLSt: Type
+PLLSt = LPair PFDSt $ LPair DIV2St $ LPair ACCSt NCOSt
+
+pll: (Seq comb seq, Primitive comb)
+  => (1 pfdReg : Reg PFDStVal comb seq)
+  -> (1 div2Reg: Reg DIV2St'  comb seq)
+  -> (1 accReg : Reg ACCSt'   comb seq)
+  -> (1 ncoReg : Reg NCOStVal comb seq)
+  -> seq PLLSt (BitVec 16, BitVec 16) (BitVec 14)
+pll pfdReg div2Reg accReg ncoReg = 
+  let 1 pfd = PFD.pfd' pfdReg
+  in ?pll_rhs
 
 
