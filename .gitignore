@@ -268,3 +268,6 @@ cython_debug/
 xsim.dir/
 __pycache__/
 xvlog.pb
+
+*.html
+*.json

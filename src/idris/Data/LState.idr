@@ -94,7 +94,7 @@ bypassSnd f = \x => (pure . (\z => (z, snd x)))
 (<|>) f g = (bypassFst g) <<< (bypassSnd f)
 
 
-react: (Show a, Show b, Show s) 
+react: (Show b, Show s) 
   => (parse: IO a) 
   -> (a -> LState s b) -> (st: s)
   -> IO s
@@ -103,7 +103,7 @@ react parse f st =
      fflush stdout
      inData <- parse 
      (st' # out) <- pure (runState (f inData) st)
-     putStrLn "{\"output\" : \"\{show out}\"}"
+     putStrLn $ show out
      fflush stdout
      pure st'
 
@@ -119,7 +119,7 @@ reactIO parse f st =
      pure st'
                
 export
-reactMealy: (Show a, Show b, Show s) 
+reactMealy: (Show b, Show s) 
   => (parse: IO a) 
   -> (a -> LState s b) -> (st: s)
   -> IO ()

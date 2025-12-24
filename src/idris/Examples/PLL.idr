@@ -1,7 +1,9 @@
 import SynQ
+import System.File
 
 %hide Data.Linear.Interface.seq
 %hide Prelude.(>>=)
+%hide Prelude.const
 
 namespace NCO
 
@@ -10,6 +12,9 @@ namespace NCO
   
   NCOSt: Type
   NCOSt = !* (BitVec 24)
+  
+  ncoInitSt: NCOSt
+  ncoInitSt = MkBang $ BV 0
   
   nco: (Seq comb seq, Primitive comb) 
     => (1 acc: Reg NCOStVal comb seq)
@@ -22,6 +27,82 @@ namespace NCO
          _ <- set nxt_acc
          pure output
          
+  %unhide Prelude.(>>=)    
+  read: IO (BitVec 24)
+  read = do putStr "step: \n"
+            fflush stdout
+            step <- (pure $ BitVec.fromInteger . cast) <*> getLine
+            pure step
+            
+  %hide Prelude.(>>=) 
+  
+  ncoFn: BitVec 24 -> LState NCOSt (BitVec 14)
+  ncoFn = runSeq $ nco reg
+  
+  export
+  ncoSW: IO ()
+  ncoSW = reactMealy read ncoFn ncoInitSt
+  
+  export
+  genVerilog: IO ()
+  genVerilog = writeVerilog "nco" $ nco reg
+  
+  
+namespace LUTDecode
+  
+  idxDecode: (Comb comb, Primitive comb)
+       => comb (BitVec 14) (BitVec 12)
+  idxDecode = 
+    lam $ \idx => 
+      let sign2 = slice 12 13 idx
+          raw_idx  = slice 0 12 idx
+      in mux21 sign2
+           (adder' (const $ BV 4095)
+                   (adder' (not raw_idx) 
+                           (const $ BV 1)))
+           raw_idx
+           
+  lutDecode: (Comb comb, Primitive comb)
+       => comb (BitVec 14, BitVec 16) (BitVec 16)
+  lutDecode = 
+    lam $ \ins => 
+      let idx = proj1 ins
+          dat = proj2 ins
+          sign1 = slice 13 14 idx
+      in mux21 sign1 dat
+           (adder' (const $ BV 65535)
+                   (adder' (not dat) 
+                           (const $ BV 1)))
+                           
+  
+  idxDecFn: BitVec 14 -> BitVec 12
+  idxDecFn = runComb idxDecode
+  
+  lutDecFn: (BitVec 14, BitVec 16) -> BitVec 16
+  lutDecFn = runComb lutDecode
+
+  %unhide Prelude.(>>=)
+  export
+  decodeProg: IO ()
+  decodeProg = 
+    do putStr "index: \n"
+       fflush stdout
+       index <- (pure $ BitVec.fromInteger . cast) <*> getLine
+       let index' = idxDecFn index
+       putStr "\{show index'}\n"
+       fflush stdout
+       rawData <- (pure $ BitVec.fromInteger . cast) <*> getLine
+       let dat = lutDecFn (index, rawData)
+       putStr "\{show dat}\n"
+       fflush stdout
+       decodeProg
+  
+  export
+  genVerilog: IO ()
+  genVerilog = do writeCombVerilog "idx_decoder"  idxDecode;
+                  writeCombVerilog "data_decoder" lutDecode
+  
+  %hide Prelude.(>>=)  
 namespace DFF
   
   export
@@ -31,6 +112,17 @@ namespace DFF
   export
   DFFSt: Type
   DFFSt = LPair (!* BitVec 1) (!* BitVec 1)
+  
+  export
+  dffInitSt: DFFSt
+  dffInitSt = (MkBang $ BV 0) # (MkBang $ BV 0)
+  
+  show': DFFSt -> String
+  show' = show
+  
+  export
+  Show DFFSt where
+    show = show'
   
   export
   %hint
@@ -65,6 +157,10 @@ namespace PFD
   PFDSt: Type
   PFDSt = LPair (!* BitVec 1) $ LPair DFFSt DFFSt
   
+  pfdInitSt: PFDSt
+  pfdInitSt = (MkBang $ BV 0) # dffInitSt # dffInitSt
+  
+  
   %ambiguity_depth 6
   pfd: (Seq comb seq, Primitive comb) 
     => (1 dffAReg: Reg DFFStVal comb seq)
@@ -81,6 +177,37 @@ namespace PFD
           outB <- (dffB clr      <<< pure unit)     <<< pure unit
           _    <- (pure unit     <<< pure unit)     <<< set (outA `and` outB)
           pure $ prod outA outB
+  
+  %unhide Prelude.(>>=)      
+  read: IO (BitVec 1, BitVec 1)
+  read = do putStr "reference signal: \n"
+            fflush stdout
+            refSig <- (pure $ BitVec.fromInteger . cast) <*> getLine
+            putStr "input signal: \n"
+            fflush stdout
+            inputSig <- (pure $ BitVec.fromInteger . cast) <*> getLine
+            pure (refSig, inputSig)
+            
+  pfdFn: (BitVec 1, BitVec 1) -> LState PFDSt (BitVec 1, BitVec 1)
+  pfdFn = runSeq 
+        $ abst $ \ins => let x = proj1 ins
+                             y = proj2 ins
+                         in pfd reg reg reg x y
+                         
+  [pfdOutShow] Show (BitVec 1, BitVec 1) where
+    show (x, y) = "{\"a_ahead_b\": \"\{show x}\", \"b_ahead_a\": \"\{show y}\"}"
+    
+  show': PFDSt -> String
+  show' = show
+  
+  [pfdStShow] Show PFDSt where
+    show = show'
+  
+  export                      
+  pfdProg: IO ()
+  pfdProg = reactMealy @{(pfdOutShow, pfdStShow)} read pfdFn pfdInitSt
+  
+            
   
   
                        
