@@ -237,23 +237,23 @@ namespace ACC
   export
   acc: (Seq comb seq, Primitive comb) 
     => (1 reg: Reg ACCSt' comb seq)
-    -> (input: comb () (BitVec 1, BitVec 1))
-    -> seq ACCSt () (BitVec 32)
-  acc (MkReg get set) input = 
-    let a2b = proj1 input
-        b2a = proj2 input
-    in do prev_acc <- get 
-          let nxt_acc = mux21 (a2b `xor` b2a) 
-                          (mux21 a2b
-                             (adder' prev_acc (const $ BV 1))
-                             (adder' prev_acc (not $ const $ BV 0)))
-                          prev_acc
-          _ <- set nxt_acc
-          pure $ shiftLL 10 nxt_acc
+    -> seq ACCSt (BitVec 1, BitVec 1) (BitVec 32)
+  acc (MkReg get set) = 
+    abst $ \input => 
+      let a2b = proj1 input
+          b2a = proj2 input
+      in do prev_acc <- get 
+            let nxt_acc = mux21 (a2b `xor` b2a) 
+                            (mux21 a2b
+                               (adder' prev_acc (const $ BV 1))
+                               (adder' prev_acc (not $ const $ BV 0)))
+                            prev_acc
+            _ <- set nxt_acc
+            pure $ shiftLL 10 nxt_acc
           
   export
   genVerilog: IO ()
-  genVerilog = writeVerilog "acc" $ abst $ \input => acc reg input
+  genVerilog = writeVerilog "acc" $ acc reg
   
 namespace DIV2
   
@@ -266,11 +266,11 @@ namespace DIV2
   DIV2St = LPair (!* BitVec 1)  (!* BitVec 1)
   
   export
-  div2: (Seq comb seq, Primitive comb)
-     => (1 reg: Reg DIV2St' comb seq)
-     -> (input: comb () $ BitVec 1)
-     -> seq DIV2St () (BitVec 1)
-  div2 (MkReg get set) input = 
+  div2': (Seq comb seq, Primitive comb)
+      => (1 reg: Reg DIV2St' comb seq)
+      -> (input: comb () $ BitVec 1)
+      -> seq DIV2St () (BitVec 1)
+  div2' (MkReg get set) input = 
     do prevInOut <- get
        let prevIn  = proj1 prevInOut
            prevOut = proj2 prevInOut
@@ -282,8 +282,14 @@ namespace DIV2
        pure output
   
   export
+  div2: (Seq comb seq, Primitive comb)
+     => (1 reg: Reg DIV2St' comb seq)
+     -> seq DIV2St (BitVec 1) (BitVec 1)
+  div2 reg = abst $ \x => div2' reg x
+  
+  export
   genVerilog: IO ()
-  genVerilog = writeVerilog "div2" $ abst $ \input => div2 reg input
+  genVerilog = writeVerilog "div2" $ div2 reg
   
 PLLSt':Type
 PLLSt' = (PFDStVal, (DIV2St', (ACCSt', NCOStVal)))
@@ -292,13 +298,18 @@ PLLSt: Type
 PLLSt = LPair PFDSt $ LPair DIV2St $ LPair ACCSt NCOSt
 
 pll: (Seq comb seq, Primitive comb)
-  => (1 pfdReg : Reg PFDStVal comb seq)
-  -> (1 div2Reg: Reg DIV2St'  comb seq)
-  -> (1 accReg : Reg ACCSt'   comb seq)
-  -> (1 ncoReg : Reg NCOStVal comb seq)
+  => (1 pfdReg : Reg (BitVec 1) comb seq)
+  -> (1 div2Reg: Reg DIV2St'    comb seq)
+  -> (1 accReg : Reg ACCSt'     comb seq)
+  -> (1 ncoReg : Reg NCOStVal   comb seq)
+  -> (1 dffAReg: Reg DFFStVal   comb seq)
+  -> (1 dffBReg: Reg DFFStVal   comb seq)
   -> seq PLLSt (BitVec 16, BitVec 16) (BitVec 14)
-pll pfdReg div2Reg accReg ncoReg = 
-  let 1 pfd = PFD.pfd' pfdReg
+pll pfdReg div2Reg accReg ncoReg dffAReg dffBReg = 
+  let 1 pfd  = PFD.pfd' dffAReg dffBReg pfdReg
+      1 div2 = DIV2.div2 div2Reg
+      1 acc  = ACC.acc accReg
+      1 nco  = NCO.nco ncoReg
   in ?pll_rhs
 
 
