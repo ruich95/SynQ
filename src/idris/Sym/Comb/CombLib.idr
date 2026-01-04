@@ -27,7 +27,7 @@ lower: {n:_} -> (Comb comb, Primitive comb)
 lower m = lam $ \x => rewrite sym $ minusZeroRight m in slice 0 m x
 
 public export
-lower': {n:_} -> (Comb comb, Primitive comb)
+lower': {n:_} -> (Primitive comb)
     => (m: Nat) -> {auto prf: LTE m n} 
     -> comb () (BitVec n) ->  comb () (BitVec m)
 lower' m x = rewrite sym $ minusZeroRight m in slice 0 m x
@@ -163,7 +163,7 @@ adder = lam $ \x => lower' {prf=lteSucc n} n (add (proj1 x) (proj2 x))
 
 public export
 adder': {n:_} 
-  -> (Comb comb, Primitive comb)
+  -> (Primitive comb)
   => comb () (BitVec n)
   -> comb () (BitVec n) 
   -> comb () (BitVec n)

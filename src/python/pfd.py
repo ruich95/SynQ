@@ -4,7 +4,6 @@ from typing import Callable, TypedDict
 import os
 import signal
 import numpy as np
-from param import output
 
 class OutputTy(TypedDict):
     a_ahead_b: bool

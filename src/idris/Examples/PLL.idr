@@ -15,40 +15,52 @@ namespace NCO
   NCOSt = !* (BitVec 24)
   
   export
+  %hint
+  ncoStIsSt: St NCOSt
+  ncoStIsSt = LV
+  
+  export
   ncoInitSt: NCOSt
   ncoInitSt = MkBang $ BV 0
   
   export
   nco: (Seq comb seq, Primitive comb) 
     => (1 acc: Reg NCOStVal comb seq)
-    -> seq NCOSt (BitVec 24) (BitVec 14)
-  nco (MkReg get set) = 
-    abst $ \step => 
-      do acc_val <- get
-         let nxt_acc = adder' acc_val step
-             output  = slice 10 24 acc_val
-         _ <- set nxt_acc
-         pure output
+    -> (step: comb () $ BitVec 24)
+    -> (phaseShift: comb () $ BitVec 24)
+    -> seq NCOSt () (BitVec 1, BitVec 14)
+  nco (MkReg get set) step phaseShift = 
+    do acc_val <- get
+       let nxt_acc = adder' acc_val step
+           fb      = not $ slice 23 24 acc_val
+           output  = slice 10 24 (adder' acc_val phaseShift)
+       _ <- set nxt_acc
+       pure $ prod fb output
          
-  %unhide Prelude.(>>=)    
-  read: IO (BitVec 24)
-  read = do putStr "step: \n"
-            fflush stdout
-            step <- (pure $ BitVec.fromInteger . cast) <*> getLine
-            pure step
+  nco': (Seq comb seq, Primitive comb) 
+    => (1 acc: Reg NCOStVal comb seq)
+    -> seq NCOSt (BitVec 24, BitVec 24) (BitVec 1, BitVec 14)       
+  nco' reg = abst $ \xin => nco reg (proj1 xin) (proj2 xin)
+  
+  -- %unhide Prelude.(>>=)    
+  -- read: IO (BitVec 24)
+  -- read = do putStr "step: \n"
+  --           fflush stdout
+  --           step <- (pure $ BitVec.fromInteger . cast) <*> getLine
+  --           pure step
             
-  %hide Prelude.(>>=) 
+  -- %hide Prelude.(>>=) 
   
-  ncoFn: BitVec 24 -> LState NCOSt (BitVec 14)
-  ncoFn = runSeq $ nco reg
+  -- ncoFn: BitVec 24 -> LState NCOSt (BitVec 14)
+  -- ncoFn = \step => (runSeq $ nco reg) (step, BV 0)
   
-  export
-  ncoSW: IO ()
-  ncoSW = reactMealy read ncoFn ncoInitSt
+  -- export
+  -- ncoSW: IO ()
+  -- ncoSW = reactMealy read ncoFn ncoInitSt
   
   export
   genVerilog: IO ()
-  genVerilog = writeVerilog "nco" $ nco reg
+  genVerilog = writeVerilog "nco" $ nco' reg
   
   
 namespace LUTDecode
@@ -164,6 +176,10 @@ namespace PFD
   pfdInitSt: PFDSt
   pfdInitSt = (MkBang $ BV 0) # dffInitSt # dffInitSt
   
+  export
+  %hint
+  pfdStIsSt: St PFDSt
+  pfdStIsSt = LP LV (LP DFFStIsSt DFFStIsSt)
   
   %ambiguity_depth 6
   export
@@ -235,6 +251,11 @@ namespace ACC
   ACCSt = !* BitVec 32
   
   export
+  %hint
+  ACCStIsSt: St ACCSt
+  ACCStIsSt = LV
+  
+  export
   acc: (Seq comb seq, Primitive comb) 
     => (1 reg: Reg ACCSt' comb seq)
     -> seq ACCSt (BitVec 1, BitVec 1) (BitVec 32)
@@ -249,7 +270,7 @@ namespace ACC
                                (adder' prev_acc (not $ const $ BV 0)))
                             prev_acc
             _ <- set nxt_acc
-            pure $ shiftLL 10 nxt_acc
+            pure $ shiftLL 6 nxt_acc
           
   export
   genVerilog: IO ()
@@ -266,11 +287,16 @@ namespace DIV2
   DIV2St = LPair (!* BitVec 1)  (!* BitVec 1)
   
   export
-  div2': (Seq comb seq, Primitive comb)
+  %hint
+  DIV2StIsSt: St DIV2St
+  DIV2StIsSt = LP LV LV
+  
+  export
+  div2: (Seq comb seq, Primitive comb)
       => (1 reg: Reg DIV2St' comb seq)
       -> (input: comb () $ BitVec 1)
       -> seq DIV2St () (BitVec 1)
-  div2' (MkReg get set) input = 
+  div2 (MkReg get set) input = 
     do prevInOut <- get
        let prevIn  = proj1 prevInOut
            prevOut = proj2 prevInOut
@@ -282,21 +308,60 @@ namespace DIV2
        pure output
   
   export
-  div2: (Seq comb seq, Primitive comb)
+  div2': (Seq comb seq, Primitive comb)
      => (1 reg: Reg DIV2St' comb seq)
      -> seq DIV2St (BitVec 1) (BitVec 1)
-  div2 reg = abst $ \x => div2' reg x
+  div2' reg = abst $ \x => div2 reg x
   
   export
   genVerilog: IO ()
-  genVerilog = writeVerilog "div2" $ div2 reg
+  genVerilog = writeVerilog "div2" $ div2' reg
+  
+namespace LoopFilter
+  
+  export
+  loopFilter: (Seq comb seq, Primitive comb) 
+           => (1 reg: Reg ACCSt' comb seq)
+           -> (a2b: comb () $ BitVec 1)
+           -> (b2a: comb () $ BitVec 1)
+           -> seq ACCSt () (BitVec 24)
+  loopFilter reg a2b b2a = 
+    let acc = ACC.acc reg 
+        pfdOutVal = mux21 (a2b `xor` b2a)
+                      (mux21 a2b
+                         (const $ BV {n=32} 65536)
+                         (shiftLL 16 (not $ const $ BV {n=32} 0)))
+                      (const $ BV 0)
+    in do accOutVal <- acc =<< (pure $ prod a2b b2a)
+          let diff = adder' pfdOutVal accOutVal
+              ctrl = slice 0 24 
+                   $ adder' diff (shiftLL 20 $ const $ BV 1)
+          pure ctrl
+  
+  loopFilter': (Seq comb seq, Primitive comb) 
+            => (1 reg: Reg ACCSt' comb seq)
+            -> seq ACCSt (BitVec 1, BitVec 1) (BitVec 24)
+  loopFilter' reg = abst $ \xin => loopFilter reg (proj1 xin) (proj2 xin)
+  
+  export
+  genVerilog: IO ()
+  genVerilog = writeVerilog "loop_filter" $ loopFilter' reg
   
 PLLSt':Type
 PLLSt' = (PFDStVal, (DIV2St', (ACCSt', NCOStVal)))
 
 PLLSt: Type
-PLLSt = LPair PFDSt $ LPair DIV2St $ LPair ACCSt NCOSt
+PLLSt = LPair (!* BitVec 1) $ LPair PFDSt $ LPair ACCSt $ LPair NCOSt DIV2St
 
+%hint
+pllStIsSt: St PLLSt
+pllStIsSt = LP LV $ LP pfdStIsSt $ LP ACCStIsSt $ LP ncoStIsSt DIV2StIsSt
+
+private infixl 9 <<<
+%hide Data.LState.infixr.(<<<)
+
+%ambiguity_depth 10
+%hide Prelude.pure
 pll: (Seq comb seq, Primitive comb)
   => (1 pfdReg : Reg (BitVec 1) comb seq)
   -> (1 div2Reg: Reg DIV2St'    comb seq)
@@ -304,12 +369,30 @@ pll: (Seq comb seq, Primitive comb)
   -> (1 ncoReg : Reg NCOStVal   comb seq)
   -> (1 dffAReg: Reg DFFStVal   comb seq)
   -> (1 dffBReg: Reg DFFStVal   comb seq)
-  -> seq PLLSt (BitVec 16, BitVec 16) (BitVec 14)
-pll pfdReg div2Reg accReg ncoReg dffAReg dffBReg = 
-  let 1 pfd  = PFD.pfd' dffAReg dffBReg pfdReg
-      1 div2 = DIV2.div2 div2Reg
-      1 acc  = ACC.acc accReg
-      1 nco  = NCO.nco ncoReg
-  in ?pll_rhs
+  -> (1 fbReg  : Reg (BitVec 1) comb seq)
+  -> seq PLLSt (BitVec 16, BitVec 24) (BitVec 14)
+pll pfdReg div2Reg accReg ncoReg dffAReg dffBReg (MkReg get set) = 
+  let 1 pfd         = PFD.pfd dffAReg dffBReg pfdReg
+      1 div2        = DIV2.div2 div2Reg
+      1 loopFilter  = LoopFilter.loopFilter accReg
+      1 nco         = NCO.nco ncoReg
+  in abst $ \xin => 
+       let refSig     = slice 15 16 $ proj1 xin
+           phaseShift = proj2 xin
+       in do ncoOut <- pure (lam id) 
+                         <<< (abst $ \x  => nco x phaseShift)
+                         <<< (abst $ \x  => loopFilter (proj1 x) (proj2 x))
+                         <<< (abst $ \x  => pfd refSig x)
+                         <<< get
+             fb    <- div2 (proj1 ncoOut) 
+                        <<< pure unit 
+                        <<< pure unit 
+                        <<< pure unit 
+                        <<< pure unit
+             _     <- (pure $ lam id) <<< set fb
+             pure $ proj2 ncoOut
+             
+genVerilog: IO ()
+genVerilog = writeVerilog "pll" $ pll reg reg reg reg reg reg reg
 
 

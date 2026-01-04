@@ -4,7 +4,6 @@ from typing import Callable, TypedDict
 import os
 import signal
 import numpy as np
-from param import output
 
 def to_number(num_str:str) -> int:
     return int(num_str[num_str.find("\'")+2:])
