@@ -152,3 +152,11 @@ module mux21_comp
       assign mux21_comp_out = mux21_comp_sel == 1'd1 ? mux21_comp_in_1 : mux21_comp_in_2;
 endmodule
 
+module mult18
+
+      (input  wire [17:0] mult18_in_1, 
+       input  wire [17:0] mult18_in_2, 
+       output wire [35:0] mult18_out);
+
+       assign mult18_out = mult18_in_1 * mult18_in_2;
+endmodule

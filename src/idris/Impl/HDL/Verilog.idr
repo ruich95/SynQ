@@ -96,12 +96,14 @@ modulePortStr (APA (AP (NM nm) len val) rhs) = ".\{nm}(\{portStr rhs})"
 moduleInstStr: (indent_:Nat) -> FlattenModuleInst 
   -> List String
 moduleInstStr indent_ (MkFlattenModule name idx params iPA oPA) 
-  = let module_nm = indent indent_ $ "\{name}"
-        params = "#(" ++ (joinBy ", " $ map moduleParamStr params) ++ ")"
-        inst_nm = indent (indent_ + 2) "\{name}_\{show idx}"
+  = let module_nm = "\{name}"
+        params' = "#(" ++ (joinBy ", " $ map moduleParamStr params) ++ ")"
+        inst_nm = "\{name}_\{show idx}"
         ports = "(" ++ (joinBy ", " $ map modulePortStr (iPA ++ oPA)) ++ ");"
-    in ["\{module_nm} \{params}",
-        "\{inst_nm} \{ports}"]
+    in case params of 
+        [] => [indent indent_ "\{module_nm} \{inst_nm} \{ports}"]
+        _  => [indent indent_ "\{module_nm} \{params'}",
+               indent (indent_ + 2) "\{inst_nm} \{ports}"]
         
 preJoinBy: String -> List String -> List String
 preJoinBy _ [] = []
