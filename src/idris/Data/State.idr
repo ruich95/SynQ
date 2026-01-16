@@ -87,3 +87,15 @@ stConsume (MkBang _) {sIsState = LV} = ()
 --   -> Res (St $ LPair a b) (const $ LPair a b)
 -- tmp x y = LP p1 p2 # (x # y)
 
+public export
+RepeatSt: Nat -> (s: Type) -> Type
+RepeatSt 0 s = ()
+RepeatSt (S 0) s = s
+RepeatSt (S (S k)) s = LPair s (RepeatSt (S k) s)
+
+export
+%hint
+repeatStIsSt: {auto sIsSt: St s} -> {n: Nat} -> St (RepeatSt n s)
+repeatStIsSt {n = 0} = LU
+repeatStIsSt {n = (S 0)} = sIsSt
+repeatStIsSt {n = (S (S k))} = LP sIsSt repeatStIsSt
