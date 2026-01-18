@@ -209,7 +209,18 @@ uint64_t bv_ltu(uint8_t len, uint64_t val_1, uint64_t val_2) {
   return (val_1 < val_2) ? 1 : 0;
 }
 
+uint64_t bv_mult18(uint64_t val_1, uint64_t val_2) {
 
+  uint64_t res;
+  
+  val_1 = val_1 & MASK(18);
+  val_1 = bv_sign_ext(18, val_1);
+  
+  val_2 = val_2 & MASK(18);
+  val_2 = bv_sign_ext(18, val_2);
 
-
-
+  res = ((int64_t) val_1) * ((int64_t) val_2);
+  res = res & MASK(36);
+  
+  return res;
+}

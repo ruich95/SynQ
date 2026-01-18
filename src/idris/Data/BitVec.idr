@@ -195,5 +195,9 @@ bvSra sht x =
         len  = natToBits8 n
     in BV $ bv_sra_2 sht' len x.val
 
+%foreign (lib_bv "bv_mult18")
+bv_mult18: Bits64 -> Bits64 -> Bits64
 
-
+export
+bvMult18: BitVec 18 -> BitVec 18 -> BitVec 36
+bvMult18 x y = BV $ bv_mult18 x.val y.val

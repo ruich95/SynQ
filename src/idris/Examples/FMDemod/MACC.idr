@@ -8,6 +8,7 @@ import Impl.HDL.NetList
 import Data.Name
 import Data.Value
 import Control.Monad.State
+import System.File
 
 %hide Data.Linear.Interface.seq
 %hide Prelude.const
@@ -41,6 +42,9 @@ Mult18 HDL.NetList.Combinational where
                                      (x'.instModules ++ 
                                       y'.instModules ++ 
                                      [mult]))
+                                     
+Mult18 Eval.Eval.Combinational where
+  mult18 (MkComb x) (MkComb y) = MkComb $ const $ bvMult18 (x ()) (y ())
 
 %hide Prelude.(>>=)
 
@@ -53,18 +57,18 @@ signExt x = let sign = slice 35 36 x
                  (concat (not $ const $ BV {n=12} 0) x) 
                  (concat (const $ BV {n=12} 0) x)
 
-stgIn1: (Seq comb seq)
-     => {auto stIsSt: St st} 
-     -> {auto aIsSig: Sig a} 
-     -> {auto bIsSig: Sig b} 
-     -> {auto similar: SameShape a st} 
-     -> (1 reg: Reg a comb seq)
-     -> (f: comb () a -> comb () b)
-     -> comb () a -> seq st () b
-stgIn1 (MkReg get set) f x = 
-  do x' <- get
-     _  <- set x
-     pure $ f x'
+-- stgIn1: (Seq comb seq)
+--      => {auto stIsSt: St st} 
+--      -> {auto aIsSig: Sig a} 
+--      -> {auto bIsSig: Sig b} 
+--      -> {auto similar: SameShape a st} 
+--      -> (1 reg: Reg a comb seq)
+--      -> (f: comb () a -> comb () b)
+--      -> comb () a -> seq st () b
+-- stgIn1 (MkReg get set) f x = 
+--   do x' <- get
+--      _  <- set x
+--      pure $ f x'
 
 %ambiguity_depth 8
 stgIn2: (Seq comb seq)
@@ -83,25 +87,35 @@ stgIn2 (MkReg get set) f x =
 
 acc: (Seq comb seq, Primitive comb)
   => (1 reg: Reg (BitVec 48) comb seq)
-  -> (x: comb () (BitVec 36))
+  -> (rst: comb () (BitVec 1))
+  -> (x  : comb () (BitVec 36))
   -> seq (!* BitVec 48) () (BitVec 48)
-acc (MkReg get set) x = 
+acc (MkReg get set) rst x = 
   do x' <- get 
-     _  <- set $ adder' x' $ signExt x
+     _  <- set $ mux21 rst 
+                       (signExt x) 
+                       (adder' x' $ signExt x)
      pure x'
 
 accStg: (Seq comb seq, Primitive comb)
   => (1 regAcc: Reg (BitVec 48) comb seq)
   -> (1 regIn : Reg (BitVec 36) comb seq)
+  -> (rst: comb () (BitVec 1))
   -> (x: comb () (BitVec 36))
   -> seq (LPair (!* BitVec 36) (!* BitVec 48)) () (BitVec 48)
-accStg regAcc regIn = stgIn2 regIn $ acc regAcc
+accStg regAcc regIn rst = stgIn2 regIn $ acc regAcc rst
 
 multStg: (Seq comb seq, Mult18 comb)
    => (1 reg: Reg (BitVec 18, BitVec 18) comb seq)
    -> (x: comb () (BitVec 18, BitVec 18))
    -> seq (LPair (!* BitVec 18) (!* BitVec 18)) () (BitVec 36)
-multStg reg = stgIn1 reg $ \x => mult18 (proj1 x) (proj2 x)
+multStg (MkReg get set) x = 
+  do prev <- get
+     let x1 = proj1 prev 
+         x2 = proj2 prev
+     _ <- set x
+     pure $ mult18 x1 x2
+
 
 MACCSt: Type
 MACCSt = LPair (LPair (!* BitVec 18) (!* BitVec 18)) (LPair (!* BitVec 36) (!* BitVec 48))
@@ -110,9 +124,51 @@ macc: (Seq comb seq, Mult18 comb, Primitive comb)
    => (1 regM: Reg (BitVec 18, BitVec 18) comb seq)
    -> (1 regAcc: Reg (BitVec 48) comb seq)
    -> (1 regIn : Reg (BitVec 36) comb seq)
-   -> (x: comb () (BitVec 18, BitVec 18))
+   -> (rst: comb () (BitVec 1))
+   -> (x  : comb () (BitVec 18, BitVec 18))
    -> seq MACCSt () (BitVec 48)
-macc regM regAcc regIn x = (abst $ accStg regAcc regIn) <<< (multStg regM x)
+macc regM regAcc regIn rst x = (abst $ accStg regAcc regIn rst) <<< (multStg regM x)
 
-genVerilog: IO ()
-genVerilog = writeVerilog "macc" (abst $ macc reg reg reg)
+macc': (Seq comb seq, Mult18 comb, Primitive comb)
+   => (1 regM: Reg (BitVec 18, BitVec 18) comb seq)
+   -> (1 regAcc: Reg (BitVec 48) comb seq)
+   -> (1 regIn : Reg (BitVec 36) comb seq)
+   -> seq MACCSt (BitVec 1, (BitVec 18, BitVec 18)) (BitVec 48)
+macc' regM regAcc regIn = 
+  abst $ \x => let rst = proj1 x
+                   x   = proj2 x
+               in macc regM regAcc regIn rst x
+
+%hide Data.LState.(<*>)
+%hide Data.Linear.(<*>)
+%hide Data.Linear.(.)
+%hide Impl.HDL.NetList.(.)
+%hide Data.LState.pure
+%hide Sym.Seq.Seq.pure
+%hide Data.LState.(>>=)
+
+%unhide Prelude.(>>=)
+%unhide Prelude.pure
+%hide Sym.Seq.SeqLib.(>>=)
+
+read: IO (BitVec 1, BitVec 18, BitVec 18)
+read = do putStr "rst: \n"
+          fflush stdout
+          rstStr <- getLine
+          let rst = (BitVec.fromInteger {n=1} . cast) rstStr
+          putStr "x1: \n"
+          fflush stdout
+          x1Str <- getLine
+          let x1 = (BitVec.fromInteger {n=18} . cast) x1Str
+          putStr "x2: \n"
+          fflush stdout
+          x2Str <- getLine
+          let x2 = (BitVec.fromInteger {n=18} . cast) x2Str
+          pure (rst, x1, x2)
+          
+maccProg: IO ()
+maccProg = reactMealy read (runSeq $ macc' reg reg reg) 
+  (((MkBang $ BV 0) # (MkBang $ BV 0)) # ((MkBang $ BV 0) # (MkBang $ BV 0)))
+
+-- genVerilog: IO ()
+-- genVerilog = writeVerilog "macc" (abst $ macc reg reg reg)
