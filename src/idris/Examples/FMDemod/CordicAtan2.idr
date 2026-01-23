@@ -49,3 +49,18 @@ nextZ =
     in mux21 (y `lt` (const $ BV 0)) 
              (adder' z (neg lutVal))
              (adder' z lutVal)
+             
+unpackIn: (Comb comb)
+  => comb () (BitVec 32, BitVec 32, BitVec 32, BitVec 5)
+  -> (comb () (BitVec 32), comb () (BitVec 32), 
+      comb () (BitVec 32), comb () (BitVec 5))
+unpackIn x = (proj1 x, proj1 (proj2 x), proj1 (proj2 (proj2 x)), proj2 (proj2 (proj2 x)))
+
+updateXYZ: (Comb comb, Primitive comb)
+  => comb (BitVec 32, BitVec 32, BitVec 32, BitVec 5) ((BitVec 32, BitVec 32), BitVec 32)
+updateXYZ = 
+  lam $ \ins => 
+    let (x, y, z, st) = unpackIn ins
+        lutVal: comb () (BitVec 32) = lut st
+    in prod (app nextXY $ prod x $ prod y st) 
+            (app nextZ  $ prod y $ prod z $ prod lutVal st)
