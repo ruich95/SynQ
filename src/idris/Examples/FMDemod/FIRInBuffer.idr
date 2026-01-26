@@ -12,9 +12,23 @@ import System.File
 
 %ambiguity_depth 8
 
+export
 FIRBufferSt: Nat -> Type
 FIRBufferSt width = (LPair AddrGenSt (RAMSt 32 width))
 
+export
+%hint
+FIRBufferStIsSt: (w: Nat) -> (St $ FIRBufferSt w)
+FIRBufferStIsSt w = LP AddrGenStIsSt (RAMStIsSt {m=32})
+
+public export
+InBufRegs: (comb: Type -> Type -> Type) 
+        -> (seq: Type -> Type -> Type -> Type) 
+        -> Type
+InBufRegs comb seq = LPair (Reg (RAMSt' 32 18) comb seq)
+                       $ (Reg AddrGenSt' comb seq)
+
+export
 firInBuffer: (Seq comb seq, Primitive comb)
   => {width: Nat} 
   -> (1 regRAM: Reg (RAMSt' 32 width) comb seq)
@@ -33,11 +47,16 @@ firInBuffer regRAM regAddrGen en dat =
         _ <- ramW en waddr dat <<< pure unit
         (ramR raddr) <<< pure unit
 
+export
+show': (width: Nat) -> FIRBufferSt width -> String
+show' width (x # y) = "\{show x} || \{show' 32 width y}"
+
 firInBuffer': (BitVec 1, BitVec 18)
   -> LState (FIRBufferSt 18) (BitVec 18)
 firInBuffer' = let _ = LP AddrGenStIsSt $ RAMStIsSt {m=32} {n=18}
                in runSeq $ abst $ \xin => firInBuffer reg reg (proj1 xin) (proj2 xin)
 
+export
 initBufferSt: (width: Nat) -> FIRBufferSt width
 initBufferSt width = initAddrGenSt # (initRAMSt 32 width (BV 0))
 
@@ -56,3 +75,4 @@ Show (FIRBufferSt 18) where
 
 firInBufferProg: IO ()
 firInBufferProg = reactMealy read firInBuffer' $ initBufferSt 18
+

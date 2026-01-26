@@ -18,16 +18,19 @@ import System.File
 
 private infixl 9 <<<
 
+public export
 interface Mult18 (0 comb: Type -> Type -> Type) where
   mult18: comb () (BitVec 18) -> comb () (BitVec 18)
        -> comb () (BitVec 36)
-       
+
+public export       
 mult18Decl: ModuleDecl (BitVec 18, BitVec 18) (BitVec 36)
 mult18Decl = MkModuleDecl 
             "mult18" [] 
             (CP (SP (NM "mult18_in_1") 18 UV) (SP (NM "mult18_in_2") 18 UV)) 
             (SP (NM "mult18_out") 36 UV)
        
+public export
 Mult18 HDL.NetList.Combinational where
   mult18 x y = 
     MkComb $ do x' <- genComb x
@@ -42,7 +45,7 @@ Mult18 HDL.NetList.Combinational where
                                      (x'.instModules ++ 
                                       y'.instModules ++ 
                                      [mult]))
-                                     
+public export                        
 Mult18 Eval.Eval.Combinational where
   mult18 (MkComb x) (MkComb y) = MkComb $ const $ bvMult18 (x ()) (y ())
 
@@ -116,10 +119,28 @@ multStg (MkReg get set) x =
      _ <- set x
      pure $ mult18 x1 x2
 
-
+export
 MACCSt: Type
 MACCSt = LPair (LPair (!* BitVec 18) (!* BitVec 18)) (LPair (!* BitVec 36) (!* BitVec 48))
 
+export
+show': MACCSt -> String
+show' x = show x
+
+export
+%hint
+MACCStIsSt: St MACCSt
+MACCStIsSt = LP (LP LV LV) (LP LV LV)
+
+public export
+MACCRegs: (comb: Type -> Type -> Type) 
+       -> (seq: Type -> Type -> Type -> Type) 
+       -> Type
+MACCRegs comb seq = LPair (Reg (BitVec 18, BitVec 18) comb seq)
+                      $ LPair (Reg (BitVec 48) comb seq)
+                              (Reg (BitVec 36) comb seq)
+
+export
 macc: (Seq comb seq, Mult18 comb, Primitive comb)
    => (1 regM: Reg (BitVec 18, BitVec 18) comb seq)
    -> (1 regAcc: Reg (BitVec 48) comb seq)
@@ -169,6 +190,10 @@ read = do putStr "rst: \n"
 maccProg: IO ()
 maccProg = reactMealy read (runSeq $ macc' reg reg reg) 
   (((MkBang $ BV 0) # (MkBang $ BV 0)) # ((MkBang $ BV 0) # (MkBang $ BV 0)))
+  
+export
+maccInit: MACCSt
+maccInit = (((MkBang $ BV 0) # (MkBang $ BV 0)) # ((MkBang $ BV 0) # (MkBang $ BV 0)))
 
 -- genVerilog: IO ()
 -- genVerilog = writeVerilog "macc" (abst $ macc reg reg reg)

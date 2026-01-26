@@ -46,15 +46,18 @@ barrelShifter: (Comb comb, Primitive comb)
          -> comb () (BitVec dataWidth)
          -> comb () (BitVec dataWidth)
 barrelShifter shiftDir = 
-  let shifter = case shiftDir of
+  let shifter:Nat -> comb () (BitVec dataWidth) -> comb () (BitVec dataWidth)
+              = case shiftDir of
                   LL => shiftLL
                   RL => shiftRL
                   RA => shiftRA
-  in lambda _ $ \shtmt => 
-       lambda _ $ \x => 
-         do shtmt: (Vect shtmtWidth $ comb () (BitVec 1)) 
-                 <- Unpack.unpack <*> Prelude.pure shtmt
-            shift: (comb (BitVec dataWidth) (BitVec dataWidth)) 
-                 <- (barrelShifter' shifter 0 $ reverse shtmt) 
-                    <*> Prelude.pure (lam $ \y => y)
+  in lambda _ $ \shtmt => lambda _ $ \x => 
+         do shtmt <- Unpack.unpack 
+                       <*> Prelude.pure shtmt
+            shift <- (barrelShifter' shifter 0 $ reverse shtmt) 
+                       <*> Prelude.pure (lam $ \y => y)
             pure $ app shift x
+            
+            -- shtmt: (Vect shtmtWidth $ comb () (BitVec 1))) <- Unpack.unpack <*> Prelude.pure shtmt
+            -- shift: (comb (BitVec dataWidth) (BitVec dataWidth)) <- (barrelShifter' shifter 0 $ reverse shtmt) <*> Prelude.pure (lam $ \y => y)
+            -- pure $ app shift x

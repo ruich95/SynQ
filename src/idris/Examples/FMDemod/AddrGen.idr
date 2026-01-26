@@ -44,6 +44,7 @@ export
 initAddrGenSt: AddrGenSt
 initAddrGenSt = (MkBang 0) # (MkBang 0)
 
+export
 show': AddrGenSt -> String
 show' = show
 
