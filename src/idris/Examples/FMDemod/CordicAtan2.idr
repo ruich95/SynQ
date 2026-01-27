@@ -39,8 +39,7 @@ nextXY =
         st = proj2 ins
         x' = barrelShifterRA32 st x
         y' = barrelShifterRA32 st y
-    in if_ (small y) 
-           (prod x y)
+    in -- if_ (small y) (prod x y)
            (if_ (y `lt` (const $ BV 0)) 
                 (prod (adder' x (neg y')) (adder' y x'))
                 (prod (adder' x y') (adder' y (neg x'))))
@@ -95,7 +94,7 @@ nextZ =
         z      = proj1 $ proj2 ins
         lutVal = proj1 $ proj2 $ proj2 ins
         st     = proj2 $ proj2 $ proj2 ins
-    in mux21 (small y) z
+    in -- mux21 (small y) z
          (mux21 (y `lt` (const $ BV 0)) 
                 (adder' z (neg lutVal))
                 (adder' z lutVal))

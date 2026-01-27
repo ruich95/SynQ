@@ -8,10 +8,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import interp1d
-
-
-def to_number(num_str:str) -> np.float64:
-    return np.int32(np.uint32(num_str[num_str.find("\'")+2:])) / (2**29)
+from common import to_number
 
 class CAtan2(object):
     def __init__(self, exec_path: str, silent: bool = True):
@@ -24,10 +21,7 @@ class CAtan2(object):
         
         self.silent = silent
 
-    def forward(self, en: bool, x1: np.float64, x2: np.float64) -> tuple[bool, np.float64]:
-        
-        x1 = np.uint32(np.int32(x1 * (2**29)))
-        x2 = np.uint32(np.int32(x2 * (2**29)))
+    def forward(self, en: bool, x1: np.uint32, x2: np.uint32) -> tuple[bool, np.uint32]:
 
         current_state = self.catan2_process.stdout.readline().rstrip("\n")
 
@@ -56,7 +50,7 @@ class CAtan2(object):
         result_str = result_str[1:-1] # remove '(' and ')'
         valid_str, result_num_str = result_str.split(", ")
         valid = (valid_str == "1'd1")
-        result = to_number(result_num_str)
+        result = np.uint32(to_number(result_num_str, nbits=32) & np.uint64(0xFFFFFFFF))
         
         return valid, result
 
@@ -71,13 +65,13 @@ class CAtan2(object):
 if __name__ == "__main__":
     try:
         catan2 = CAtan2(exec_path="../../build/exec/atan2", silent=True) 
-        x1 = np.random.uniform(-1.5, 1.5, 1000)
-        x2 = np.random.uniform(-1.5, 1.5, 1000)
+        x1 = [-0.16424476, -0.41017246, -0.5811543 , -0.6371264 ] # np.random.uniform(-1, 1, 1000)
+        x2 = [-0.6274776 , -0.49741298, -0.27006736,  0.01391446] # np.random.uniform(-1, 1, 1000)
         
 
         ref = np.atan2(x1, x2)
 
-        res = np.zeros_like(ref)
+        res = np.zeros_like(ref, dtype=np.uint32)
 
         for i, (x1_val, x2_val) in enumerate(tqdm(zip(x1, x2), total=len(x1))):
             for iter in range(32):
@@ -85,16 +79,22 @@ if __name__ == "__main__":
                     en = True
                 else:
                     en = False
+                x1_val = np.uint32(np.int32(x1_val * (2**29)))
+                x2_val = np.uint32(np.int32(x2_val * (2**29)))
                 valid, res[i] = catan2.forward(en, x1_val, x2_val)
 
                 if valid:
                     break
+
+        res = np.int32(res) / (2**29)
 
         err = np.abs(ref - res)
 
         print("Average Error: {}".format(np.mean(err)))
 
         print("Max Error:{} , at input x1, x2: {}, {}, ref: {}, res: {}".format(np.max(err), x1[np.argmax(err)], x2[np.argmax(err)], ref[np.argmax(err)], res[np.argmax(err)]))
+
+        print(res)
         
     finally: 
         catan2.terminate()
