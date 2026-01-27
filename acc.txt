@@ -1,0 +1,13 @@
+inputs:
+  x_0: BV 8
+outputs:
+  x_8: BV 8
+states:
+  !x_9: BV 8
+ops:
+  x_1: BV 8 <<= !x_9: BV 8
+  x_3: BV 8 = x_0: BV 8 + x_1: BV 8
+  !x_9: BV 8 ::= x_3: BV 8
+  x_5: BV 8 <<= !x_9: BV 8
+  x_7: BV 8 = not x_0: BV 8
+  x_8: BV 8 = x_7: BV 8 + x_5: BV 8

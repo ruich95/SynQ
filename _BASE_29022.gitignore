@@ -268,8 +268,3 @@ cython_debug/
 xsim.dir/
 __pycache__/
 xvlog.pb
-
-src/python/.venv/
-
-*.json
-*.html

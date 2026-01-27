@@ -1,0 +1,4 @@
+input: (): ()
+output: x_0: BV 8
+state: !(): ()
+x_0: BV 8 = 8'd1: BV 8 + 8'd1: BV 8

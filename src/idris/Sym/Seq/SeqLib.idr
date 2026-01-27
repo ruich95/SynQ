@@ -10,7 +10,7 @@ import Data.State
 %hide Data.Linear.Interface.seq
 
 public export
-applyFst: {comb: _} -> {seq: _} -> (Seq comb seq)
+applyFst: (Seq comb seq)
        => {auto sIsState: St s} -> {auto aIsSig: Sig a}
        -> {auto bIsSig: Sig b}  -> {auto cIsSig: Sig c}
        -> (1 _: seq s a b) -> seq s (a, c) (b, c)
@@ -21,7 +21,7 @@ applyFst fs =
     =<< (pure $ proj1 x)
 
 public export
-applySnd: {comb: _} -> {seq: _} -> (Seq comb seq)
+applySnd: (Seq comb seq)
        => {auto sIsState: St s} -> {auto aIsSig: Sig a}
        -> {auto bIsSig: Sig b}  -> {auto cIsSig: Sig c}
        -> (1 _: seq s a b) -> seq s (c, a) (c, b)
@@ -32,7 +32,7 @@ applySnd fs =
     =<< (pure $ proj2 x)
 
 public export
-scan: {comb: _} -> {seq: _} -> (Seq comb seq)
+scan: (Seq comb seq)
   => (1 reg: Reg c comb seq) 
   -> {auto sIsState: St s} -> {auto aIsSig: Sig a}
   -> {auto bIsSig: Sig b} -> {auto cIsSig: Sig c}

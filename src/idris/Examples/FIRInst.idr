@@ -3,6 +3,8 @@ import Examples.FIR
 import Data.Vect
 import System.File
 
+import Impl.TAC
+
 %hide Data.Linear.Interface.seq
 -- %hide Prelude.(>>=)
 %hide LState.(>>=)

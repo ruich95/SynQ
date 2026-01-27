@@ -269,7 +269,12 @@ xsim.dir/
 __pycache__/
 xvlog.pb
 
+<<<<<<< HEAD
+*.html
+*.json
+=======
 src/python/.venv/
 
 *.json
 *.html
+>>>>>>> tac
