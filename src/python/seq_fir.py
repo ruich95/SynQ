@@ -3,13 +3,7 @@ import os
 import signal
 import numpy as np
 
-def to_number(num_str:str) -> np.uint64:
-    # get the lower 48 bits
-    val = np.uint64(num_str[num_str.find("\'")+2:]) & 0xFFFFFFFFFFFF
-    # extend the sign bit
-    if (val & 0x800000000000):
-       val = val | 0xFFFF000000000000
-    return val
+from common import to_number
 
 class FIR(object):
     def __init__(self, exec_path: str, silent: bool = True):
@@ -41,9 +35,11 @@ class FIR(object):
 
         result_str = self.fir_process.stdout.readline().rstrip("\n")
         result_str = result_str[1:-1] # remove '(' and ')'
+        if not self.silent:
+            print("result:", result_str)
         valid_str, result_num_str = result_str.split(", ")
         valid = (valid_str == "1'd1")
-        result = to_number(result_num_str) # / (2**34 - 1)
+        result = to_number(result_num_str, nbits=48) # / (2**34 - 1)
         
         return valid, result
 

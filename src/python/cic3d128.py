@@ -2,14 +2,7 @@ import subprocess
 import os
 import signal
 import numpy as np
-
-def to_number(num_str:str) -> np.uint64:
-    # get the lower 37 bits
-    val = np.uint64(num_str[num_str.find("\'")+2:]) & 0x1FFFFFFFFF
-    # extend the sign bit
-    if (val & 0x1000000000):
-       val = val | np.uint64(0xFFFFFFE000000000)
-    return val
+from common import to_number
 
 class CIC3D128(object):
     def __init__(self, exec_path: str, silent: bool = True):
@@ -39,7 +32,7 @@ class CIC3D128(object):
         result_str = result_str[1:-1] # remove '(' and ')'
         valid_str, result_num_str = result_str.split(", ")
         valid = (valid_str == "1'd1")
-        result = to_number(result_num_str)
+        result = to_number(result_num_str, nbits=37)
         
         return valid, result
 

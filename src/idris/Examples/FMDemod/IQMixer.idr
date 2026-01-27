@@ -1,3 +1,5 @@
+module Examples.FMDemod.IQMixer
+
 import SynQ
 import System.File
 
@@ -55,13 +57,13 @@ mixer: (Comb comb, Primitive comb)
 mixer lo_iq signal = 
   let lo_i = proj1 lo_iq 
       lo_q = proj2 lo_iq
-  in prod (mux21 lo_i signal (const $ BV 0)) 
-          (mux21 lo_q signal (const $ BV 0))
+  in prod (mux21 lo_i signal (adder' (not signal) (const $ BV 1))) 
+          (mux21 lo_q signal (adder' (not signal) (const $ BV 1)))
           
-downCnvrt: (Seq comb seq, Primitive comb) 
+iqMixer: (Seq comb seq, Primitive comb) 
   => (1 loReg: Reg LOSt' comb seq)
   -> seq LOSt (BitVec 24, BitVec 16) (BitVec 16, BitVec 16)
-downCnvrt loReg = 
+iqMixer loReg = 
   abst $ \ins => 
     let tw = proj1 ins
         signal = proj2 ins
@@ -82,3 +84,6 @@ read = do putStr "freq tw: \n"
           let dat = (BitVec.fromInteger {n=16} . cast) dat
           pure (tw, dat)
        
+
+iqMixerProg: IO ()
+iqMixerProg = reactMealy read (runSeq $ iqMixer reg) loInitSt
