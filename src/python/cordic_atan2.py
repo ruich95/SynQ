@@ -65,11 +65,35 @@ class CAtan2(object):
 if __name__ == "__main__":
     try:
         catan2 = CAtan2(exec_path="../../build/exec/atan2", silent=True) 
-        x1 = [-0.16424476, -0.41017246, -0.5811543 , -0.6371264 ] # np.random.uniform(-1, 1, 1000)
-        x2 = [-0.6274776 , -0.49741298, -0.27006736,  0.01391446] # np.random.uniform(-1, 1, 1000)
+        x1 = [-0.6821203231811523, -0.45667439699172974, -0.0808437 ,  0.41178885,  0.9737072 ,  
+              1.54854262,  2.07132816, 2.46742916,  2.65620065,  2.56379938,  
+              2.14471149,  1.40581024, 0.42329174, -0.65697902, -1.64068985, -2.32461715, -2.54850554,
+             -2.24118853, -1.44869089, -0.33338216,  0.85900277,  1.85737669, 2.4327507 ,  2.45581794,  
+             1.92798054,  0.97730058, -0.17828356, -1.28841996, -2.13112307, -2.56011271] # np.random.uniform(-1, 1, 1000)
+        x2 = [2.592158317565918, 2.7595603466033936, 2.77324963,  2.66366911,  2.44840884,  2.11887074,  1.64744055,
+         1.01130354,  0.2207378 , -0.66175127, -1.52066994, -2.20688033,
+        -2.57222843, -2.50991035, -1.98965192, -1.08026946,  0.05565783,
+         1.18824184,  2.07001328,  2.49698734,  2.36334205,  1.69292676,
+         0.63696927, -0.56252807, -1.63354337, -2.34136915, -2.54336143,
+        -2.21661162, -1.45306516, -0.42664894] # np.random.uniform(-1, 1, 1000)
+
+        def cordic_atan(y: float, x: float, iterations: int = 16) -> float:
+            angles = [np.arctan(2**-i) for i in range(iterations)]
+            z = 0.0
+            x_acc = x
+            y_acc = y
+            for i in range(iterations):
+                s = 1.0 if y_acc < 0 else -1.0
+                m = 1
+                x_new = x_acc - s * (y_acc * m * (2 ** -i))
+                y_new = y_acc + s * (x_acc * m * (2 ** -i))
+                z = z - s * angles[i]
+                x_acc = x_new
+                y_acc = y_new
+            return z 
         
 
-        ref = np.atan2(x1, x2)
+        ref = np.arctan2(x1, x2)
 
         res = np.zeros_like(ref, dtype=np.uint32)
 
@@ -79,12 +103,12 @@ if __name__ == "__main__":
                     en = True
                 else:
                     en = False
-                x1_val = np.uint32(np.int32(x1_val * (2**29)))
-                x2_val = np.uint32(np.int32(x2_val * (2**29)))
-                valid, res[i] = catan2.forward(en, x1_val, x2_val)
+                x1_val = np.uint32(np.int32(x1_val * (2**28)))
+                x2_val = np.uint32(np.int32(x2_val * (2**28)))
+                valid, res_val = catan2.forward(en, x1_val, x2_val)
 
                 if valid:
-                    break
+                    res[i] = res_val
 
         res = np.int32(res) / (2**29)
 
@@ -92,9 +116,10 @@ if __name__ == "__main__":
 
         print("Average Error: {}".format(np.mean(err)))
 
-        print("Max Error:{} , at input x1, x2: {}, {}, ref: {}, res: {}".format(np.max(err), x1[np.argmax(err)], x2[np.argmax(err)], ref[np.argmax(err)], res[np.argmax(err)]))
+        print("Max Error:{} , at input x1, x2: {} ({}), {} ({}), ref: {}, res: {}".format(np.max(err), x1[np.argmax(err)], np.uint32(np.int32(x1[np.argmax(err)] * (2**29))), x2[np.argmax(err)], np.uint32(np.int32(x2[np.argmax(err)] * (2**29))), ref[np.argmax(err)], res[np.argmax(err)]))
+        print(cordic_atan(x1[np.argmax(err)], x2[np.argmax(err)], iterations=32))
 
-        print(res)
+        print(err)
         
     finally: 
         catan2.terminate()
