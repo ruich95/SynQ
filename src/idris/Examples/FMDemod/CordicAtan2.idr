@@ -1,11 +1,13 @@
 module Examples.FMDemod.CordicAtan2
-{- Atan2 implemented with Cordic and q29 format-}
+{- Atan2 implemented with Cordic and q2.29 format-}
 
 import SynQ
 import Examples.FMDemod.BarrelShifter
 import Data.Vect
 import Language.Reflection
 import System.File
+
+import Impl.TAC
 
 %language ElabReflection
 %hide Linear.Interface.seq
@@ -195,3 +197,6 @@ atan2: IO ()
 atan2 = reactMealy read (runSeq $ CordicAtan2' reg reg reg) 
                    (((MkBang $ BV 0) # (MkBang $ BV 0)) 
                    # (MkBang $ BV 0) # (MkBang $ BV 0))
+                   
+emitTAC: IO ()
+emitTAC = ppDump "atan2" $ pprint $ shareExp $ elimDead $ substSt $ flatTAC $ genTAC (CordicAtan2' reg reg reg)

@@ -1,0 +1,121 @@
+inputs:
+  x_0: BV 1
+  x_1: BV 32
+  x_2: BV 32
+outputs:
+  x_330: BV 1
+  x_244: BV 32
+states:
+  !x_331: BV 32
+  !x_332: BV 32
+  !x_333: BV 32
+  !x_334: BV 5
+ops:
+  x_5: BV 5 = not 5'd0: BV 5
+  x_6: BV 1 = x_334: BV 5 == x_5: BV 5
+  x_8: BV 6 = x_334: BV 5 + 5'd1: BV 5
+  x_9: BV 5 = (x_8: BV 6)<0:5>
+  x_10: BV 5 = if x_6: BV 1 then x_5: BV 5 else x_9: BV 5
+  x_11: BV 5 = if x_0: BV 1 then 5'd0: BV 5 else x_10: BV 5
+  !x_334: BV 5 ::= x_11: BV 5
+  x_20: BV 1 = 32'd0: BV 32 <S x_1: BV 32
+  x_21: BV 32 = not x_1: BV 32
+  x_22: BV 33 = x_21: BV 32 + 32'd1: BV 32
+  x_23: BV 32 = (x_22: BV 33)<0:32>
+  x_24: BV 32 = if x_20: BV 1 then x_1: BV 32 else x_23: BV 32
+  x_26: BV 32 = not x_2: BV 32
+  x_27: BV 33 = x_26: BV 32 + 32'd1: BV 32
+  x_28: BV 32 = (x_27: BV 33)<0:32>
+  x_29: BV 32 = if x_20: BV 1 then x_2: BV 32 else x_28: BV 32
+  x_33: BV 1 = x_332: BV 32 <S 32'd0: BV 32
+  x_36: BV 1 = (x_334: BV 5)<4:5>
+  x_37: BV 32 = x_332: BV 32 >>A 16
+  x_38: BV 32 = if x_36: BV 1 then x_37: BV 32 else x_332: BV 32
+  x_40: BV 1 = (x_334: BV 5)<3:4>
+  x_41: BV 32 = x_38: BV 32 >>A 8
+  x_42: BV 32 = if x_40: BV 1 then x_41: BV 32 else x_38: BV 32
+  x_44: BV 1 = (x_334: BV 5)<2:3>
+  x_45: BV 32 = x_42: BV 32 >>A 4
+  x_46: BV 32 = if x_44: BV 1 then x_45: BV 32 else x_42: BV 32
+  x_48: BV 1 = (x_334: BV 5)<1:2>
+  x_49: BV 32 = x_46: BV 32 >>A 2
+  x_50: BV 32 = if x_48: BV 1 then x_49: BV 32 else x_46: BV 32
+  x_52: BV 1 = (x_334: BV 5)<0:1>
+  x_53: BV 32 = x_50: BV 32 >>A 1
+  x_54: BV 32 = if x_52: BV 1 then x_53: BV 32 else x_50: BV 32
+  x_55: BV 32 = not x_54: BV 32
+  x_56: BV 33 = x_55: BV 32 + 32'd1: BV 32
+  x_57: BV 32 = (x_56: BV 33)<0:32>
+  x_58: BV 33 = x_331: BV 32 + x_57: BV 32
+  x_59: BV 32 = (x_58: BV 33)<0:32>
+  x_63: BV 32 = x_331: BV 32 >>A 16
+  x_64: BV 32 = if x_36: BV 1 then x_63: BV 32 else x_331: BV 32
+  x_67: BV 32 = x_64: BV 32 >>A 8
+  x_68: BV 32 = if x_40: BV 1 then x_67: BV 32 else x_64: BV 32
+  x_71: BV 32 = x_68: BV 32 >>A 4
+  x_72: BV 32 = if x_44: BV 1 then x_71: BV 32 else x_68: BV 32
+  x_75: BV 32 = x_72: BV 32 >>A 2
+  x_76: BV 32 = if x_48: BV 1 then x_75: BV 32 else x_72: BV 32
+  x_79: BV 32 = x_76: BV 32 >>A 1
+  x_80: BV 32 = if x_52: BV 1 then x_79: BV 32 else x_76: BV 32
+  x_81: BV 33 = x_332: BV 32 + x_80: BV 32
+  x_104: BV 33 = x_331: BV 32 + x_54: BV 32
+  x_105: BV 32 = (x_104: BV 33)<0:32>
+  x_127: BV 32 = not x_80: BV 32
+  x_128: BV 33 = x_127: BV 32 + 32'd1: BV 32
+  x_129: BV 32 = (x_128: BV 33)<0:32>
+  x_130: BV 33 = x_332: BV 32 + x_129: BV 32
+  x_132: BV 32 = if x_33: BV 1 then x_59: BV 32 else x_105: BV 32
+  x_182: BV 32 = (x_81: BV 33)<0:32>
+  x_231: BV 32 = (x_130: BV 33)<0:32>
+  x_232: BV 32 = if x_33: BV 1 then x_182: BV 32 else x_231: BV 32
+  x_238: BV 32 = if x_0: BV 1 then x_24: BV 32 else x_132: BV 32
+  x_239: BV 32 = if x_0: BV 1 then x_29: BV 32 else x_232: BV 32
+  !x_331: BV 32 ::= x_238: BV 32
+  !x_332: BV 32 ::= x_239: BV 32
+  x_249: BV 1 = 32'd0: BV 32 <S x_2: BV 32
+  x_250: BV 32 = not 32'd1686629713: BV 32
+  x_251: BV 33 = x_250: BV 32 + 32'd1: BV 32
+  x_252: BV 32 = (x_251: BV 33)<0:32>
+  x_253: BV 32 = if x_249: BV 1 then 32'd1686629713: BV 32 else x_252: BV 32
+  x_254: BV 32 = if x_20: BV 1 then 32'd0: BV 32 else x_253: BV 32
+  x_259: BV 32 = if x_52: BV 1 then 32'd1: BV 32 else 32'd2: BV 32
+  x_262: BV 32 = if x_52: BV 1 then 32'd4: BV 32 else 32'd7: BV 32
+  x_264: BV 32 = if x_52: BV 1 then 32'd15: BV 32 else 32'd31: BV 32
+  x_265: BV 32 = if x_48: BV 1 then x_262: BV 32 else x_264: BV 32
+  x_266: BV 32 = if x_44: BV 1 then x_259: BV 32 else x_265: BV 32
+  x_270: BV 32 = if x_52: BV 1 then 32'd63: BV 32 else 32'd127: BV 32
+  x_272: BV 32 = if x_52: BV 1 then 32'd255: BV 32 else 32'd511: BV 32
+  x_273: BV 32 = if x_48: BV 1 then x_270: BV 32 else x_272: BV 32
+  x_276: BV 32 = if x_52: BV 1 then 32'd1023: BV 32 else 32'd2047: BV 32
+  x_278: BV 32 = if x_52: BV 1 then 32'd4095: BV 32 else 32'd8191: BV 32
+  x_279: BV 32 = if x_48: BV 1 then x_276: BV 32 else x_278: BV 32
+  x_280: BV 32 = if x_44: BV 1 then x_273: BV 32 else x_279: BV 32
+  x_281: BV 32 = if x_40: BV 1 then x_266: BV 32 else x_280: BV 32
+  x_286: BV 32 = if x_52: BV 1 then 32'd16383: BV 32 else 32'd32767: BV 32
+  x_288: BV 32 = if x_52: BV 1 then 32'd65535: BV 32 else 32'd131071: BV 32
+  x_289: BV 32 = if x_48: BV 1 then x_286: BV 32 else x_288: BV 32
+  x_292: BV 32 = if x_52: BV 1 then 32'd262143: BV 32 else 32'd524287: BV 32
+  x_294: BV 32 = if x_52: BV 1 then 32'd1048574: BV 32 else 32'd2097141: BV 32
+  x_295: BV 32 = if x_48: BV 1 then x_292: BV 32 else x_294: BV 32
+  x_296: BV 32 = if x_44: BV 1 then x_289: BV 32 else x_295: BV 32
+  x_300: BV 32 = if x_52: BV 1 then 32'd4194218: BV 32 else 32'd8387925: BV 32
+  x_302: BV 32 = if x_52: BV 1 then 32'd16771757: BV 32 else 32'd33510843: BV 32
+  x_303: BV 32 = if x_48: BV 1 then x_300: BV 32 else x_302: BV 32
+  x_306: BV 32 = if x_52: BV 1 then 32'd66762579: BV 32 else 32'd131521918: BV 32
+  x_308: BV 32 = if x_52: BV 1 then 32'd248918914: BV 32 else 32'd421657428: BV 32
+  x_309: BV 32 = if x_48: BV 1 then x_306: BV 32 else x_308: BV 32
+  x_310: BV 32 = if x_44: BV 1 then x_303: BV 32 else x_309: BV 32
+  x_311: BV 32 = if x_40: BV 1 then x_296: BV 32 else x_310: BV 32
+  x_312: BV 32 = if x_36: BV 1 then x_281: BV 32 else x_311: BV 32
+  x_318: BV 32 = not x_312: BV 32
+  x_319: BV 33 = x_318: BV 32 + 32'd1: BV 32
+  x_320: BV 32 = (x_319: BV 33)<0:32>
+  x_321: BV 33 = x_333: BV 32 + x_320: BV 32
+  x_322: BV 32 = (x_321: BV 33)<0:32>
+  x_323: BV 33 = x_333: BV 32 + x_312: BV 32
+  x_324: BV 32 = (x_323: BV 33)<0:32>
+  x_325: BV 32 = if x_33: BV 1 then x_322: BV 32 else x_324: BV 32
+  x_326: BV 32 = if x_0: BV 1 then x_254: BV 32 else x_325: BV 32
+  !x_333: BV 32 ::= x_326: BV 32
+  x_330: BV 1 = x_334: BV 5 == 5'd30: BV 5

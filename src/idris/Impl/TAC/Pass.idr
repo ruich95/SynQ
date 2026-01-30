@@ -6,3 +6,4 @@ import public Impl.TAC.Pass.GetEliminate
 import public Impl.TAC.Pass.StateMove
 import public Impl.TAC.Pass.DeadCodeElim
 import public Impl.TAC.Pass.SubstGet
+import public Impl.TAC.Pass.ExpSharing
