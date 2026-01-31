@@ -1,7 +1,7 @@
 module Examples.FMDemod.MACC
 
 import SynQ
-
+import Impl.TAC
 import Impl.HDL.Module
 import Impl.HDL.Port
 import Impl.HDL.NetList
@@ -15,6 +15,7 @@ import System.File
 %hide Prelude.pure
 %hide Prelude.concat
 %hide Data.LState.infixr.(<<<)
+%hide TAC.Json.st
 
 private infixl 9 <<<
 
@@ -49,6 +50,18 @@ public export
 Mult18 Eval.Eval.Combinational where
   mult18 (MkComb x) (MkComb y) = MkComb $ const $ bvMult18 (x ()) (y ())
 
+%unhide Prelude.pure
+public export                        
+Mult18 TACComb where
+  mult18 (MkTACC x) (MkTACC y) = 
+    MkTACC $ do 
+      (MkTAC _ outX _ opsX) <- x
+      (MkTAC _ outY _ opsY) <- y
+      dst <- GenTAC.genVar (Impl.TAC.Data.BvTy $ 36)
+      let op = TAC.MULT outX outY dst
+      pure $ MkTAC U dst (MkSt U)
+                    (opsX ++ opsY ++ [op])
+%hide Prelude.pure
 %hide Prelude.(>>=)
 
 export
@@ -194,6 +207,9 @@ maccProg = reactMealy read (runSeq $ macc' reg reg reg)
 export
 maccInit: MACCSt
 maccInit = (((MkBang $ BV 0) # (MkBang $ BV 0)) # ((MkBang $ BV 0) # (MkBang $ BV 0)))
+
+emitLLVMIR: IO ()
+emitLLVMIR = dumpLLVMIR "macc" $ shareExp $ elimDead $ flatTAC $ genTAC (macc' reg reg reg)
 
 -- genVerilog: IO ()
 -- genVerilog = writeVerilog "macc" (abst $ macc reg reg reg)

@@ -9,8 +9,8 @@ import Data.List
 import Data.LC
 
 sameDef: FlatOp -> FlatOp -> Bool
-sameDef (st ::= src)             (st' ::= src')              = src == src'
-sameDef (_ <<= st)               (_ <<= st')                 = True
+sameDef (st ::= src)             (st' ::= src')              = src == src' && (st == st')
+sameDef (_ <<= st)               (_ <<= st')                 = st' == st
 sameDef (ADD src1 src2 _)        (ADD src1' src2' _)         = (src1 == src1') && (src2 == src2')
 sameDef (CONCAT src1 src2 _)     (CONCAT src1' src2' _)      = (src1 == src1') && (src2 == src2')
 sameDef (AND src1 src2 _)        (AND src1' src2' _)         = (src1 == src1') && (src2 == src2')
@@ -35,20 +35,23 @@ hasDefined x (y :: xs) =
        False => hasDefined x xs
        True =>  Just $ getDst y
 
-shareExpStep: (Zipper FlatOp) -> (Zipper FlatOp) 
-shareExpStep z@(MkZipper prev Nothing rest) = next z
-shareExpStep z@(MkZipper prev (Just x) rest) = 
+shareExpStep: (Zipper FlatOp, List FTACData) -> (Zipper FlatOp, List FTACData)
+shareExpStep (z@(MkZipper prev Nothing rest), outputs) = (next z, outputs)
+shareExpStep (z@(MkZipper prev (Just x) rest), outputs) = 
   case hasDefined x prev of
-       Nothing => next z
+       Nothing => (next z, outputs)
        (Just y) => 
-         let rest': List FlatOp = map (substOp (getDst x) y) rest
-         in next $ MkZipper prev Nothing rest'
+         let rest' = map (substOp (getDst x) y) rest
+             outputs' = map (subst (getDst x) y) outputs
+         in (next $ MkZipper prev Nothing rest', outputs')
 
-shareExp': (Zipper FlatOp) -> (Zipper FlatOp) 
-shareExp' z = if isEnd z then z else shareExp' (shareExpStep z)
+shareExp': (Zipper FlatOp, List FTACData) -> (Zipper FlatOp, List FTACData) 
+shareExp' z = if isEnd (fst z) then z else shareExp' (shareExpStep z)
 
 export
 shareExp: FTAC -> FTAC
 shareExp tac@(MkFTAC input output state ops) = 
-  let ops' = Common.toList $ shareExp' (fromList ops) 
-  in {ops := ops'} tac
+  let ops' = fromList ops
+      (ops', output') = shareExp' (ops', output)
+      ops' = Common.toList ops'
+  in {ops := ops', output := output'} tac

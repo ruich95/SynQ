@@ -1,6 +1,7 @@
 module Examples.FMDemod.FIR
 
 import SynQ
+import Impl.TAC
 import Examples.FMDemod.FIRInBuffer
 import Examples.FMDemod.FIRCoef
 import Examples.FMDemod.MACC
@@ -108,3 +109,6 @@ firCIC3D128CompProg =
   reactMealy read 
     (runSeq $ firCIC3D128Comp' reg (reg # reg # reg) (reg # reg) reg)
     (maccInit # coefInit # initBufferSt 18 # (MkBang $ BV 0))
+
+emitLLVMIR: IO ()
+emitLLVMIR = dumpLLVMIR "cic3d128comp" $ shareExp $ elimDead $ flatTAC $ genTAC (firCIC3D128Comp' reg (reg # reg # reg) (reg # reg) reg)

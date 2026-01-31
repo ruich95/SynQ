@@ -1,0 +1,13 @@
+inputs:
+  x_0: BV 8
+outputs:
+  x_4: BV 8
+  x_10: BV 8
+states:
+  !x_11: BV 8
+ops:
+  x_1: BV 8 <<= !x_11: BV 8
+  x_3: BV 9 = x_1: BV 8 + x_0: BV 8
+  x_4: BV 8 = (x_3: BV 9)<0:8>
+  !x_11: BV 8 ::= x_4: BV 8
+  x_10: BV 8 = x_4: BV 8 >>A 3

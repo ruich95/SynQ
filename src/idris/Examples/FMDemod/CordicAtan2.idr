@@ -153,15 +153,15 @@ CAtan2St' = ((BitVec 32, BitVec 32), BitVec 32, BitVec 5)
 CAtan2St: Type
 CAtan2St = LPair (LPair (!* BitVec 32) (!* BitVec 32)) (LPair (!* BitVec 32) (!* BitVec 5))
 
-CordicAtan2: (Seq comb seq, Primitive comb)
+cordicAtan2: (Seq comb seq, Primitive comb)
   => (1 stReg: Reg (BitVec 5) comb seq)
   -> (1 xyReg: Reg (BitVec 32, BitVec 32) comb seq)
   -> (1 zReg : Reg (BitVec 32) comb seq)
   -> (en: comb () (BitVec 1))
-  -> (x: comb () (BitVec 32))
   -> (y: comb () (BitVec 32))
+  -> (x: comb () (BitVec 32))
   -> seq CAtan2St () (BitVec 1, BitVec 32)
-CordicAtan2 stReg xyReg zReg en x y = 
+cordicAtan2 stReg xyReg zReg en y x = 
   let updateXY = updateXY xyReg en x y
       updateZ  = updateZ zReg en x y
       updateSt = updateSt stReg en
@@ -170,13 +170,13 @@ CordicAtan2 stReg xyReg zReg en x y =
         res  <- (pure $ lam id) <<< (updateZ yAcc st) <<< pure unit
         pure (prod (eq st (const $ BV 30)) res)
 
-CordicAtan2': (Seq comb seq, Primitive comb)
+cordicAtan2': (Seq comb seq, Primitive comb)
   => (1 stReg: Reg (BitVec 5) comb seq)
   -> (1 xyReg: Reg (BitVec 32, BitVec 32) comb seq)
   -> (1 zReg : Reg (BitVec 32) comb seq)
   -> seq CAtan2St (BitVec 1, BitVec 32, BitVec 32) (BitVec 1, BitVec 32)
-CordicAtan2' stReg xyReg zReg = 
-  abst $ \x => CordicAtan2 stReg xyReg zReg (proj1 x) (proj1 $ proj2 x) (proj2 $ proj2 x)
+cordicAtan2' stReg xyReg zReg = 
+  abst $ \x => cordicAtan2 stReg xyReg zReg (proj1 x) (proj1 $ proj2 x) (proj2 $ proj2 x)
   
 %unhide Prelude.(>>=)
 %ambiguity_depth 8
@@ -194,9 +194,12 @@ read = do putStr "en: \n"
           pure (en, x, y)
           
 atan2: IO ()
-atan2 = reactMealy read (runSeq $ CordicAtan2' reg reg reg) 
+atan2 = reactMealy read (runSeq $ cordicAtan2' reg reg reg) 
                    (((MkBang $ BV 0) # (MkBang $ BV 0)) 
                    # (MkBang $ BV 0) # (MkBang $ BV 0))
                    
-emitTAC: IO ()
-emitTAC = ppDump "atan2" $ pprint $ shareExp $ elimDead $ substSt $ flatTAC $ genTAC (CordicAtan2' reg reg reg)
+emitLLVMIR: IO ()
+emitLLVMIR = dumpLLVMIR "atan2" $ shareExp $ elimDead $ flatTAC $ genTAC (cordicAtan2' reg reg reg)
+
+emitPP: IO ()
+emitPP = ppDump "atan2" $ pprint $ shareExp $ elimDead $ flatTAC $ genTAC (cordicAtan2' reg reg reg)

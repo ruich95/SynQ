@@ -33,16 +33,14 @@ class CAtan2(object):
         self.catan2_process.stdin.write(en_str)
         self.catan2_process.stdin.flush()
 
-
-        # send x2 (x) before x1 (y) to compute atan2(x1/x2)
-        x2_req = self.catan2_process.stdout.readline().rstrip("\n")
-        x2_str = str(x2) + "\n"
-        self.catan2_process.stdin.write(x2_str)
-        self.catan2_process.stdin.flush()
-
         x1_req = self.catan2_process.stdout.readline().rstrip("\n")
         x1_str = str(x1) + "\n"
         self.catan2_process.stdin.write(x1_str)
+        self.catan2_process.stdin.flush()
+
+        x2_req = self.catan2_process.stdout.readline().rstrip("\n")
+        x2_str = str(x2) + "\n"
+        self.catan2_process.stdin.write(x2_str)
         self.catan2_process.stdin.flush()
 
 
@@ -50,6 +48,7 @@ class CAtan2(object):
         result_str = result_str[1:-1] # remove '(' and ')'
         valid_str, result_num_str = result_str.split(", ")
         valid = (valid_str == "1'd1")
+        print("Result Str:", result_str)
         result = np.uint32(to_number(result_num_str, nbits=32) & np.uint64(0xFFFFFFFF))
         
         return valid, result
@@ -100,12 +99,15 @@ if __name__ == "__main__":
         for i, (x1_val, x2_val) in enumerate(tqdm(zip(x1, x2), total=len(x1))):
             for iter in range(32):
                 if iter == 0:
+                    print(np.uint32(np.int32(x1_val * (2**28))), np.uint32(np.int32(x2_val * (2**28))))
+                    x1_val = np.uint32(np.int32(x1_val * (2**28)))
+                    x2_val = np.uint32(np.int32(x2_val * (2**28)))
                     en = True
                 else:
                     en = False
-                x1_val = np.uint32(np.int32(x1_val * (2**28)))
-                x2_val = np.uint32(np.int32(x2_val * (2**28)))
                 valid, res_val = catan2.forward(en, x1_val, x2_val)
+
+                print(np.uint32(res_val), ref[i] * (2**29))
 
                 if valid:
                     res[i] = res_val
