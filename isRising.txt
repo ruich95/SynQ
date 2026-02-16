@@ -1,6 +1,0 @@
-input: x_0: BV 8
-output: x_4: BV 1
-state: !x_5: BV 8
-x_1: BV 8 <<= !x_5: BV 8
-!x_5: BV 8 ::= x_0: BV 8
-x_4: BV 1 = x_1: BV 8 <U x_0: BV 8

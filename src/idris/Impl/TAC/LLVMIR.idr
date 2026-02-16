@@ -118,8 +118,9 @@ opsToInst (op :: ops) =
      pure $ insts ++ rest
 
 stToGlobal': TACSt FTACData -> String
-stToGlobal' st@(MkSt x) = 
+stToGlobal' st@(MkSt x@(SVar label ty1)) = 
   "\{st2Reg st} = private global \{data2iTy x} 0"
+stToGlobal' _ = ""
 
 stToGlobal: List (TACSt FTACData) -> List String
 stToGlobal = map stToGlobal'

@@ -3,6 +3,7 @@ module Examples.FMDemod.Decimator
 import SynQ
 import System.File
 import Examples.FMDemod.SampleHold
+import Impl.TAC
 
 %hide Prelude.(>>=)
 %hide Data.Linear.Interface.seq
@@ -84,3 +85,6 @@ read = do putStr "en: \n"
 decimator2Prog: IO ()
 decimator2Prog = reactMealy read (runSeq $ decimator2' reg) 
                    ((MkBang $ BV 0) # (MkBang $ BV 0) # (MkBang $ BV 0))
+
+emitLLVMIR: IO ()
+emitLLVMIR = dumpLLVMIR "decimator2" $ shareExp $ elimDead $ flatTAC $ genTAC (decimator2' {dWidth=48} reg)

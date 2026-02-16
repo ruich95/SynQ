@@ -39,8 +39,8 @@ nextXY =
     let x  = proj1 $ proj1 ins 
         y  = proj2 $ proj1 ins
         st = proj2 ins
-        x' = barrelShifterRA32 st x
-        y' = barrelShifterRA32 st y
+        x' = shifterRA st x -- barrelShifterRA32 st x
+        y' = shifterRA st y
     in -- if_ (small y) (prod x y)
            (if_ (y `lt` (const $ BV 0)) 
                 (prod (adder' x (neg y')) (adder' y x'))
@@ -200,6 +200,9 @@ atan2 = reactMealy read (runSeq $ cordicAtan2' reg reg reg)
                    
 emitLLVMIR: IO ()
 emitLLVMIR = dumpLLVMIR "atan2" $ shareExp $ elimDead $ flatTAC $ genTAC (cordicAtan2' reg reg reg)
+
+emitVerilog: IO ()
+emitVerilog = dumpVerilog "atan2" $ shareExp $ elimDead $ flatTAC $ genTAC (cordicAtan2' reg reg reg)
 
 emitPP: IO ()
 emitPP = ppDump "atan2" $ pprint $ shareExp $ elimDead $ flatTAC $ genTAC (cordicAtan2' reg reg reg)

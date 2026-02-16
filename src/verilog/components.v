@@ -157,6 +157,12 @@ module mult18
       (input  wire [17:0] mult18_in_1, 
        input  wire [17:0] mult18_in_2, 
        output wire [35:0] mult18_out);
+       
+      wire signed [17:0] x_signed;
+      wire signed [17:0] y_signed;
 
-       assign mult18_out = mult18_in_1 * mult18_in_2;
+      assign x_signed = $signed(mult18_in_1);
+      assign y_signed = $signed(mult18_in_2);
+
+      assign mult18_out = x_signed * y_signed;
 endmodule

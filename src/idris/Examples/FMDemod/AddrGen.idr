@@ -65,3 +65,34 @@ addrProg = reactMealy read addrGen' $ (MkBang 0) # (MkBang 0)
 export 
 Show AddrGenSt where
   show = show'
+
+export
+AddrGenSt64': Type
+AddrGenSt64' = (BitVec 6, BitVec 6)
+
+export
+AddrGenSt64: Type
+AddrGenSt64 = LPair (!* BitVec 6) (!* BitVec 6)
+
+export
+%hint
+AddrGenSt64IsSt: St AddrGenSt64
+AddrGenSt64IsSt = LP LV LV
+
+export
+addrGen64: (Seq comb seq, Primitive comb)
+  => (1 reg: Reg AddrGenSt64' comb seq)
+  -> (en: comb () $ BitVec 1)
+  -> seq AddrGenSt64 () (BitVec 6, BitVec 6)
+addrGen64 (MkReg get set) en = 
+  do st <- get
+     let curTail = proj1 st
+         curIdx  = mux21 en 
+                     (adder' curTail (const $ BV 1)) -- curTail + 1
+                     (proj2 st)
+         nextTail = mux21 en 
+                      (adder' curTail (const $ BV 1))
+                      curTail
+         nextIdx  = (adder' curIdx (const $ BV 1))
+     _ <- set $ prod nextTail nextIdx
+     pure $ prod curTail curIdx

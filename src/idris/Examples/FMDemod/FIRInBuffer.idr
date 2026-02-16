@@ -1,8 +1,8 @@
 module Examples.FMDemod.FIRInBuffer
 
 import SynQ
-import Examples.FMDemod.RAM
-import Examples.FMDemod.AddrGen
+import public Examples.FMDemod.RAM
+import public Examples.FMDemod.AddrGen
 
 import System.File
 
@@ -76,3 +76,39 @@ Show (FIRBufferSt 18) where
 firInBufferProg: IO ()
 firInBufferProg = reactMealy read firInBuffer' $ initBufferSt 18
 
+namespace InBuffer64
+  export
+  FIRBufferSt64: Nat -> Type
+  FIRBufferSt64 width = (LPair AddrGenSt64 (RAMSt 64 width))
+  
+  export
+  %hint
+  FIRBufferSt64IsSt: (w: Nat) -> (St $ FIRBufferSt64 w)
+  FIRBufferSt64IsSt w = LP AddrGenSt64IsSt (RAMStIsSt {m=64})
+  
+  public export
+  InBuf64Regs: (comb: Type -> Type -> Type) 
+          -> (seq: Type -> Type -> Type -> Type) 
+          -> Type
+  InBuf64Regs comb seq = LPair (Reg (RAMSt' 64 18) comb seq)
+                             $ (Reg AddrGenSt64' comb seq)
+  
+  export
+  firInBuffer64: (Seq comb seq, Primitive comb)
+    => {width: Nat} 
+    -> (1 regRAM: Reg (RAMSt' 64 width) comb seq)
+    -> (1 regAddrGen: Reg AddrGenSt64' comb seq)
+    -> (en: comb () $ BitVec 1)
+    -> (dat: comb () $ BitVec width)
+    -> seq (FIRBufferSt64 width)
+           ()  (BitVec width)
+  firInBuffer64 regRAM regAddrGen en dat = 
+    let (ramR # ramW) = ram regRAM
+        addrGen = addrGen64 regAddrGen
+        _ = RAMStIsSt {m=64} {n=width}
+        _ = FIRBufferSt64IsSt width
+    in do addr <- (pure $ lam id) <<< addrGen en
+          let waddr = proj1 addr
+              raddr = proj2 addr
+          _ <- ramW en waddr dat <<< pure unit
+          (ramR raddr) <<< pure unit

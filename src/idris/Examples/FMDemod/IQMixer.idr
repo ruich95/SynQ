@@ -2,6 +2,7 @@ module Examples.FMDemod.IQMixer
 
 import SynQ
 import System.File
+import Impl.TAC
 
 %hide Data.Linear.Interface.seq
 %hide Prelude.(>>=)
@@ -87,3 +88,7 @@ read = do putStr "freq tw: \n"
 
 iqMixerProg: IO ()
 iqMixerProg = reactMealy read (runSeq $ iqMixer reg) loInitSt
+
+emitLLVMIR: IO ()
+emitLLVMIR = dumpLLVMIR "iqMixer" $ shareExp $ elimDead $ flatTAC $ genTAC (iqMixer reg)
+

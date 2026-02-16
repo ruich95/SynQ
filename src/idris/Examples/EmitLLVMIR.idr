@@ -16,5 +16,8 @@ sys (MkReg get set) =
 emitLLVMIR: IO ()
 emitLLVMIR = dumpLLVMIR "sys" $ shareExp $ elimDead $ flatTAC $ genTAC (sys reg)
 
+emitVerilog: IO ()
+emitVerilog = dumpVerilog "sys" $ shareExp $ elimDead $ flatTAC $ genTAC (sys reg)
+
 emitPP: IO ()
 emitPP = ppDump "sys" $ pprint $ shareExp $ elimDead $ flatTAC $ genTAC (sys reg)
