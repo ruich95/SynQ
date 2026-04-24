@@ -187,41 +187,71 @@ namespace FIR64
   FIRSt64IsSt: St FIRSt64
   FIRSt64IsSt = LP MACCStIsSt (LP CoefSt64IsSt (LP (FIRBufferSt64IsSt 18) LV))
   
+  public export
+  FIRRegs: (Type -> Type -> Type) -> (Type -> Type -> Type -> Type) -> Type
+  FIRRegs comb seq = LPair (Reg (BitVec 7) comb seq) $ 
+                     LPair (MACCRegs comb seq) $
+                     LPair (InBuf64Regs comb seq) (Reg CoefSt64' comb seq)
+
+      
+  -- firCIC4D128Comp64: (Seq comb seq, Primitive comb, Mult18 comb)
+  --   => (1 stReg: Reg (BitVec 7) comb seq)
+  --   -> (1 maccRegs: MACCRegs comb seq)
+  --   -> (1 inBufRegs: InBuf64Regs comb seq)
+  --   -> (1 coefReg: Reg CoefSt64' comb seq)
+  --   -> (en: comb () $ BitVec 1)
+  --   -> (dat: comb () $ BitVec 18)
+  --   -> seq FIRSt64 () (BitVec 1, BitVec 48)
+  -- firCIC4D128Comp64 stReg (maccReg1 # maccReg2 # maccReg3) (inBufReg1 # inBufReg2) coefReg en dat = 
+  --   let inBuffer = firInBuffer64 inBufReg1 inBufReg2 en dat
+  --       coefGen  = firCoef64 coefReg lut_cic4d128_comp_64 en
+  --       macc     = macc maccReg1 maccReg2 maccReg3
+  --       stManger = updateSt64 stReg en
+  --   in do st   <- stManger        <<< (pure unit)     <<< (pure unit)     <<< (pure unit)
+  --         val  <- (pure $ lam id) <<< inBuffer        <<< (pure unit)     <<< (pure unit)
+  --         coef <- (pure $ lam id) <<< (pure $ lam id) <<< coefGen         <<< (pure unit)
+  --         out  <- (pure $ lam id) <<< (pure $ lam id) <<< (pure $ lam id) <<< (macc (decodeRst64 st) 
+  --                                                                                   (prod val coef))
+  --         pure $ prod (decodeValid64 st) out
+  
   firCIC4D128Comp64: (Seq comb seq, Primitive comb, Mult18 comb)
-    => (1 stReg: Reg (BitVec 7) comb seq)
-    -> (1 maccRegs: MACCRegs comb seq)
-    -> (1 inBufRegs: InBuf64Regs comb seq)
-    -> (1 coefReg: Reg CoefSt64' comb seq)
+    => (1 regs: FIRRegs comb seq)
     -> (en: comb () $ BitVec 1)
     -> (dat: comb () $ BitVec 18)
     -> seq FIRSt64 () (BitVec 1, BitVec 48)
-  firCIC4D128Comp64 stReg (maccReg1 # maccReg2 # maccReg3) (inBufReg1 # inBufReg2) coefReg en dat = 
+  firCIC4D128Comp64 (stReg # (maccReg1 # maccReg2 # maccReg3) # (inBufReg1 # inBufReg2) # coefReg) en dat = 
     let inBuffer = firInBuffer64 inBufReg1 inBufReg2 en dat
         coefGen  = firCoef64 coefReg lut_cic4d128_comp_64 en
         macc     = macc maccReg1 maccReg2 maccReg3
         stManger = updateSt64 stReg en
-    in do st   <- stManger <<< (pure unit) <<< (pure unit) <<< (pure unit)
-          let rst      = decodeRst64 st
-              valid    = decodeValid64 st
-          coef <- (pure $ lam id) <<< (pure $ lam id) <<< coefGen         <<< (pure unit)
+    in do st   <- stManger        <<< (pure unit)     <<< (pure unit)     <<< (pure unit)
           val  <- (pure $ lam id) <<< inBuffer        <<< (pure unit)     <<< (pure unit)
-          out  <- (pure $ lam id) <<< (pure $ lam id) <<< (pure $ lam id) <<< macc rst (prod val coef)
-          pure $ prod valid out
+          coef <- (pure $ lam id) <<< (pure $ lam id) <<< coefGen         <<< (pure unit)
+          out  <- (pure $ lam id) <<< (pure $ lam id) <<< (pure $ lam id) <<< (macc (decodeRst64 st) 
+                                                                                    (prod val coef))
+          pure $ prod (decodeValid64 st) out
   
+  -- export
+  -- firCIC4D128Comp64': (Seq comb seq, Primitive comb, Mult18 comb)
+  --   => (1 stReg: Reg (BitVec 7) comb seq)
+  --   -> (1 maccRegs: MACCRegs comb seq)
+  --   -> (1 inBufRegs: InBuf64Regs comb seq)
+  --   -> (1 coefReg: Reg CoefSt64' comb seq)
+  --   -> seq FIRSt64 (BitVec 1, BitVec 18) (BitVec 1, BitVec 48)
+  -- firCIC4D128Comp64' stReg maccRegs inBufRegs coefReg = 
+  --   abst $ \x => firCIC4D128Comp64 stReg maccRegs inBufRegs coefReg (proj1 x) (proj2 x)
+
   export
   firCIC4D128Comp64': (Seq comb seq, Primitive comb, Mult18 comb)
-    => (1 stReg: Reg (BitVec 7) comb seq)
-    -> (1 maccRegs: MACCRegs comb seq)
-    -> (1 inBufRegs: InBuf64Regs comb seq)
-    -> (1 coefReg: Reg CoefSt64' comb seq)
+    => (1 regs: FIRRegs comb seq)
     -> seq FIRSt64 (BitVec 1, BitVec 18) (BitVec 1, BitVec 48)
-  firCIC4D128Comp64' stReg maccRegs inBufRegs coefReg = 
-    abst $ \x => firCIC4D128Comp64 stReg maccRegs inBufRegs coefReg (proj1 x) (proj2 x)
+  firCIC4D128Comp64' regs = 
+    abst $ \x => firCIC4D128Comp64 regs (proj1 x) (proj2 x)    
   
-  export
-  emitLLVMIR: IO ()
-  emitLLVMIR = dumpLLVMIR "cic4_d128_comp64" $ shareExp $ elimDead $ flatTAC $ genTAC (firCIC4D128Comp64' reg (reg # reg # reg) (reg # reg) reg)
+  -- export
+  -- emitLLVMIR: IO ()
+  -- emitLLVMIR = dumpLLVMIR "cic4_d128_comp64" $ shareExp $ elimDead $ flatTAC $ genTAC (firCIC4D128Comp64' reg (reg # reg # reg) (reg # reg) reg)
   
-  export
-  emitVerilog: IO ()
-  emitVerilog = dumpVerilog "cic4_d128_comp64" $ shareExp $ elimDead $ flatTAC $ genTAC (firCIC4D128Comp64' reg (reg # reg # reg) (reg # reg) reg)
+  -- export
+  -- emitVerilog: IO ()
+  -- emitVerilog = dumpVerilog "cic4_d128_comp64" $ shareExp $ elimDead $ flatTAC $ genTAC (firCIC4D128Comp64' reg (reg # reg # reg) (reg # reg) reg)

@@ -13,10 +13,10 @@ inRange = lam $ \diff =>
   prod (diff `lt` (const $ BV 0x6487ed51))
        ((const $ BV 0x19b7812af) `lt` diff)
 
-unwarpDiffStg1: (Seq comb seq, Primitive comb)
+unwrapDiffStg1: (Seq comb seq, Primitive comb)
   => (1 reg: Reg (BitVec 33) comb seq)
   -> seq (!* BitVec 33) (BitVec 1, BitVec 33) (BitVec 1, BitVec 33)
-unwarpDiffStg1 (MkReg get set) = 
+unwrapDiffStg1 (MkReg get set) = 
   abst $ \xin => do prev <- get
                     let en  = proj1 xin
                         cur = proj2 xin
@@ -24,12 +24,12 @@ unwarpDiffStg1 (MkReg get set) =
                     _ <- set $ mux21 en cur prev
                     pure $ prod en diff
 
-unwarpDiffStg2: (Seq comb seq, Primitive comb)
+unwrapDiffStg2: (Seq comb seq, Primitive comb)
   => (1 reg: Reg (BitVec 1, BitVec 33) comb seq)
   -> seq (LPair (!* BitVec 1) (!* BitVec 33)) 
          (BitVec 1, BitVec 33) 
          (BitVec 1, BitVec 33)
-unwarpDiffStg2 (MkReg get set) = 
+unwrapDiffStg2 (MkReg get set) = 
   abst $ \xin => do st <- get
                     let en   = proj1 st
                         diff = proj2 st
@@ -44,13 +44,13 @@ unwarpDiffStg2 (MkReg get set) =
                     _ <- set xin
                     pure (prod en out)
 
-unwarpDiff': (Seq comb seq, Primitive comb)
+unwrapDiff'': (Seq comb seq, Primitive comb)
   => (1 reg1: Reg (BitVec 33) comb seq)
   -> (1 reg2: Reg (BitVec 1, BitVec 33) comb seq)
   -> seq (LPair (!* BitVec 33) (LPair (!* BitVec 1) (!* BitVec 33)))
          (BitVec 1, BitVec 33) 
          (BitVec 1, BitVec 33)
-unwarpDiff' reg1 reg2 =  (unwarpDiffStg2 reg2) <<< (unwarpDiffStg1 reg1)
+unwrapDiff'' reg1 reg2 =  (unwrapDiffStg2 reg2) <<< (unwrapDiffStg1 reg1)
 
 buf: (Seq comb seq, Primitive comb)
   => (1 reg: Reg (BitVec 1, BitVec 32) comb seq)
@@ -76,17 +76,37 @@ outTrunc = lam $ \x =>
   in prod (proj1 x)
           (slice 0 32 dat)
 
-unwarpDiff: (Seq comb seq, Primitive comb)
-  => (1 reg1: Reg (BitVec 33) comb seq)
-  -> (1 reg2: Reg (BitVec 1, BitVec 33) comb seq )
-  -> (1 bufReg: Reg (BitVec 1, BitVec 32) comb seq)
-  -> seq (LPair (LPair (!* BitVec 33) $ LPair (!* BitVec 1) (!* BitVec 33)) $ LPair (!* BitVec 1) (!* BitVec 32)) 
+export
+UnwrapDiffSt: Type
+UnwrapDiffSt = (LPair (LPair (!* BitVec 33) $ LPair (!* BitVec 1) (!* BitVec 33)) $ LPair (!* BitVec 1) (!* BitVec 32))
+
+%hint
+export
+UnwrapDiffStIsSt: St UnwrapDiffSt
+UnwrapDiffStIsSt = LP (LP LV (LP LV LV)) (LP LV LV)
+
+
+export
+UnwrapDiffRegs: (Type -> Type -> Type) -> (Type -> Type -> Type -> Type) -> Type
+UnwrapDiffRegs comb seq = LPair (Reg (BitVec 33) comb seq) $ 
+                          LPair (Reg (BitVec 1, BitVec 33) comb seq)
+                                (Reg (BitVec 1, BitVec 32) comb seq)
+
+export
+unwrapDiffRegs: UnwrapDiffRegs TACComb TACSeq
+unwrapDiffRegs = reg # reg # reg
+
+export
+unwrapDiff': (Seq comb seq, Primitive comb)
+  => (1 regs: UnwrapDiffRegs comb seq)
+  -> seq UnwrapDiffSt 
          (BitVec 1, BitVec 32) 
          (BitVec 1, BitVec 32)
-unwarpDiff reg1 reg2 bufReg = (buf bufReg) <<< ((pure outTrunc) =<< (unwarpDiff' reg1 reg2) =<< (pure inTrunc))
+unwrapDiff' (reg1 # reg2 # bufReg) = 
+  (buf bufReg) <<< ((pure outTrunc) =<< (unwrapDiff'' reg1 reg2) =<< (pure inTrunc))
 
-emitLLVMIR: IO ()
-emitLLVMIR = dumpLLVMIR "unwrap_diff" $ shareExp $ elimDead $ flatTAC $ genTAC (unwarpDiff reg reg reg)
+-- emitLLVMIR: IO ()
+-- emitLLVMIR = dumpLLVMIR "unwrap_diff" $ shareExp $ elimDead $ flatTAC $ genTAC (unwrapDiff reg reg reg)
 
-emitVerilog: IO ()
-emitVerilog = dumpVerilog "unwrap_diff" $ shareExp $ elimDead $ flatTAC $ genTAC (unwarpDiff reg reg reg)
+-- emitVerilog: IO ()
+-- emitVerilog = dumpVerilog "unwrap_diff" $ shareExp $ elimDead $ flatTAC $ genTAC (unwrapDiff reg reg reg)

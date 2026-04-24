@@ -2,7 +2,7 @@ module Examples.FMDemod.DDC
 
 import SynQ
 import Data.Vect
-import Examples.FMDemod.Mult18
+import public Examples.FMDemod.Mult18
 import Examples.FMDemod.Mixer
 import Examples.FMDemod.PipelinedCIC
 import Examples.FMDemod.FIR
@@ -13,8 +13,14 @@ import Impl.TAC
 
 private infixl 9 <<<
 
-DDCBranchSt: Type
-DDCBranchSt = LPair MixerSt $ LPair CIC4d128St FIRSt64
+export
+DDCSt: Type
+DDCSt = LPair MixerSt $ LPair CIC4d128St FIRSt64
+
+%hint
+export
+DDCStIsSt: St DDCSt
+DDCStIsSt = LP MixerStIsSt (LP cic4d128StIsSt FIRSt64IsSt)
 
 CICRegsTy: (Type -> Type -> Type) -> (Type -> Type -> Type -> Type) -> Type
 CICRegsTy comb seq = 
@@ -42,19 +48,37 @@ buf (MkReg get set) =
                   _ <- set x
                   pure st
 
+export
+DDCRegs: (Type -> Type -> Type) -> (Type -> Type -> Type -> Type) -> Type
+DDCRegs comb seq = LPair (Reg MixerSt' comb seq) $ 
+                   LPair (CICRegsTy comb seq) (CICCompRegsTy comb seq)
 
-ddcBranch: (Seq comb seq, Primitive comb, Mult18 comb)
+export
+ddcRegs: DDCRegs TACComb TACSeq
+ddcRegs = reg # ((reg # reg # reg # reg) # reg # (reg # reg # reg # reg)) 
+          # (reg # (reg # reg # reg) # (reg # reg) # reg)
+
+ddc: (Seq comb seq, Primitive comb, Mult18 comb)
   => (1 mixerReg: Reg MixerSt' comb seq)
   -> (1 cicRegs: CICRegsTy comb seq)
   -> (1 cicCompRegs: CICCompRegsTy comb seq)
-  -> seq DDCBranchSt (BitVec 18, BitVec 16) (BitVec 1, BitVec 48)
-ddcBranch mixerReg (intRegs # decReg # combReg) 
+  -> seq DDCSt (BitVec 18, BitVec 16) (BitVec 1, BitVec 48)
+ddc mixerReg (intRegs # decReg # combReg) 
           (compStReg # maccRegs # inBufRegs # coefRegs) 
   = let mixer        = mixer' mixerReg
         cicDecimator = cic4d128' intRegs decReg combReg
-        cicComp      = firCIC4D128Comp64' compStReg maccRegs inBufRegs coefRegs
+        cicComp      = firCIC4D128Comp64' (compStReg # maccRegs # inBufRegs # coefRegs)
     in cicComp <<< (cicDecimator =<< (pure trunc)) <<< mixer
-    
+
+export
+ddc': (Seq comb seq, Primitive comb, Mult18 comb)
+  => (1 regs: DDCRegs comb seq)
+  -> (lo: comb () $ BitVec 18)
+  -> (sig: comb () $ BitVec 16)
+  -> seq DDCSt () (BitVec 1, BitVec 48)
+ddc' (mixerReg # cicRegs # cicCompRegs) lo sig
+  = (ddc mixerReg cicRegs cicCompRegs) =<< (pure $ prod lo sig)
+            
 -- DDCSt: Type
 -- DDCSt = LPair DDCBranchSt DDCBranchSt
 
@@ -99,6 +123,6 @@ emitVerilog = dumpVerilog "ddc_branch"
            $ elimDead 
            $ flatTAC 
            $ genTAC 
-           $ ddcBranch reg 
+           $ ddc reg 
                  ((reg # reg # reg # reg) # reg # (reg # reg # reg # reg)) 
                  (reg # (reg # reg # reg) # (reg # reg) # reg)

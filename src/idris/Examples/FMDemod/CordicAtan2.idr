@@ -150,8 +150,15 @@ updateSt (MkReg get set) en =
 CAtan2St': Type
 CAtan2St' = ((BitVec 32, BitVec 32), BitVec 32, BitVec 5)
 
+export
 CAtan2St: Type
 CAtan2St = LPair (LPair (!* BitVec 32) (!* BitVec 32)) (LPair (!* BitVec 32) (!* BitVec 5))
+
+%hint
+export
+CAtan2StIsSt: St CAtan2St
+CAtan2StIsSt = LP (LP LV LV) (LP LV LV)
+
 
 cordicAtan2: (Seq comb seq, Primitive comb)
   => (1 stReg: Reg (BitVec 5) comb seq)
@@ -170,39 +177,47 @@ cordicAtan2 stReg xyReg zReg en y x =
         res  <- (pure $ lam id) <<< (updateZ yAcc st) <<< pure unit
         pure (prod (eq st (const $ BV 30)) res)
 
+export
+CAtan2Regs: (Type -> Type -> Type) -> (Type -> Type -> Type -> Type) -> Type
+CAtan2Regs comb seq = LPair (Reg (BitVec 5) comb seq) $ 
+                     LPair (Reg (BitVec 32, BitVec 32) comb seq) 
+                           (Reg (BitVec 32) comb seq)
+export
+catan2Regs: CAtan2Regs TACComb TACSeq
+catan2Regs = reg # reg # reg
+
+export
 cordicAtan2': (Seq comb seq, Primitive comb)
-  => (1 stReg: Reg (BitVec 5) comb seq)
-  -> (1 xyReg: Reg (BitVec 32, BitVec 32) comb seq)
-  -> (1 zReg : Reg (BitVec 32) comb seq)
+  => (1 stReg: CAtan2Regs comb seq)
   -> seq CAtan2St (BitVec 1, BitVec 32, BitVec 32) (BitVec 1, BitVec 32)
-cordicAtan2' stReg xyReg zReg = 
+cordicAtan2' (stReg # xyReg # zReg) = 
   abst $ \x => cordicAtan2 stReg xyReg zReg (proj1 x) (proj1 $ proj2 x) (proj2 $ proj2 x)
   
-%unhide Prelude.(>>=)
-%ambiguity_depth 8
+-- %unhide Prelude.(>>=)
+-- %ambiguity_depth 8
 
-read: IO (BitVec 1, BitVec 32, BitVec 32)
-read = do putStr "en: \n"
-          fflush stdout
-          en <- (pure $ BitVec.fromInteger . cast) <*> getLine
-          putStr "x: \n"
-          fflush stdout
-          x <- (pure $ BitVec.fromInteger . cast) <*> getLine
-          putStr "y: \n"
-          fflush stdout
-          y <- (pure $ BitVec.fromInteger . cast) <*> getLine
-          pure (en, x, y)
+-- read: IO (BitVec 1, BitVec 32, BitVec 32)
+-- read = do putStr "en: \n"
+--           fflush stdout
+--           en <- (pure $ BitVec.fromInteger . cast) <*> getLine
+--           putStr "x: \n"
+--           fflush stdout
+--           x <- (pure $ BitVec.fromInteger . cast) <*> getLine
+--           putStr "y: \n"
+--           fflush stdout
+--           y <- (pure $ BitVec.fromInteger . cast) <*> getLine
+--           pure (en, x, y)
           
-atan2: IO ()
-atan2 = reactMealy read (runSeq $ cordicAtan2' reg reg reg) 
-                   (((MkBang $ BV 0) # (MkBang $ BV 0)) 
-                   # (MkBang $ BV 0) # (MkBang $ BV 0))
+-- atan2: IO ()
+-- atan2 = reactMealy read (runSeq $ cordicAtan2' reg reg reg) 
+--                    (((MkBang $ BV 0) # (MkBang $ BV 0)) 
+--                    # (MkBang $ BV 0) # (MkBang $ BV 0))
                    
-emitLLVMIR: IO ()
-emitLLVMIR = dumpLLVMIR "atan2" $ shareExp $ elimDead $ flatTAC $ genTAC (cordicAtan2' reg reg reg)
+-- emitLLVMIR: IO ()
+-- emitLLVMIR = dumpLLVMIR "atan2" $ shareExp $ elimDead $ flatTAC $ genTAC (cordicAtan2' reg reg reg)
 
-emitVerilog: IO ()
-emitVerilog = dumpVerilog "atan2" $ shareExp $ elimDead $ flatTAC $ genTAC (cordicAtan2' reg reg reg)
+-- emitVerilog: IO ()
+-- emitVerilog = dumpVerilog "atan2" $ shareExp $ elimDead $ flatTAC $ genTAC (cordicAtan2' reg reg reg)
 
-emitPP: IO ()
-emitPP = ppDump "atan2" $ pprint $ shareExp $ elimDead $ flatTAC $ genTAC (cordicAtan2' reg reg reg)
+-- emitPP: IO ()
+-- emitPP = ppDump "atan2" $ pprint $ shareExp $ elimDead $ flatTAC $ genTAC (cordicAtan2' reg reg reg)
