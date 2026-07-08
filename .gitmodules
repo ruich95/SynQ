@@ -1,0 +1,3 @@
+[submodule ".github"]
+	path = .github
+	url = git@gits-15.sys.kth.se:ruich/idris2-mcp-prompts-skills.git

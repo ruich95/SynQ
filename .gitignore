@@ -274,6 +274,5 @@ src/python/.venv/
 *.json
 *.html
 
-.github
 .venv
 .vscode
